@@ -1,5 +1,5 @@
 package com.example.myapplication   // <-- kendi paket adınla değiştir
-
+//ben bu satiri yeni yazdim!
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
