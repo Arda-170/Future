@@ -1,5 +1,11 @@
-package com.example.myapplication   // <-- kendi paket adınla değiştir
-//ben bu satiri yeni yazdim!
+package com.example.myapplication
+
+import android.app.AppOpsManager
+import android.app.usage.UsageEvents
+import android.app.usage.UsageStatsManager
+import android.content.Intent
+import android.provider.Settings
+import android.os.Process
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -20,7 +26,6 @@ import androidx.health.connect.client.records.StepsRecord
 import androidx.health.connect.client.records.HeartRateRecord
 import androidx.health.connect.client.records.SleepSessionRecord
 import androidx.health.connect.client.records.ExerciseSessionRecord
-import androidx.health.connect.client.records.BloodPressureRecord
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
 import kotlinx.coroutines.launch
@@ -28,6 +33,7 @@ import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import androidx.health.connect.client.records.metadata.DataOrigin
 
 class MainActivity : ComponentActivity() {
 
@@ -39,8 +45,7 @@ class MainActivity : ComponentActivity() {
         HealthPermission.getReadPermission(StepsRecord::class),
         HealthPermission.getReadPermission(HeartRateRecord::class),
         HealthPermission.getReadPermission(SleepSessionRecord::class),
-        HealthPermission.getReadPermission(ExerciseSessionRecord::class),
-        HealthPermission.getReadPermission(BloodPressureRecord::class)
+        HealthPermission.getReadPermission(ExerciseSessionRecord::class)
     )
 
     // Ekranda gösterilecek veriler
@@ -49,8 +54,9 @@ class MainActivity : ComponentActivity() {
     private var latestHeartRateState = mutableStateOf<Long?>(null)
     private var sleepDurationState = mutableStateOf<String?>(null)
     private var exerciseSummaryState = mutableStateOf<String?>(null)
-    private var bloodPressureState = mutableStateOf<String?>(null)
     private var statusMessage = mutableStateOf("Henüz veri çekilmedi")
+    private var screenTimeState = mutableStateOf<String?>(null)
+    private var tahminiUykuState = mutableStateOf<String?>(null)
 
     private val requestPermissionLauncher = registerForActivityResult(
         PermissionController.createRequestPermissionResultContract()
@@ -76,9 +82,11 @@ class MainActivity : ComponentActivity() {
                         sonNabiz = latestHeartRateState.value,
                         uykuSuresi = sleepDurationState.value,
                         egzersizOzeti = exerciseSummaryState.value,
-                        tansiyon = bloodPressureState.value,
+                        ekranSuresi = screenTimeState.value,
+                        tahminiUyku = tahminiUykuState.value,
                         durumMesaji = statusMessage.value,
-                        onYenileTiklandi = { checkHealthConnectDurumu() }
+                        onYenileTiklandi = { checkHealthConnectDurumu() },
+                        onIzinIste = { kullanimErisimiAyarlarinaGit() }
                     )
                 }
             }
@@ -119,6 +127,8 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             statusMessage.value = "Veriler çekiliyor..."
 
+            kaynaklariGoster()
+
             val adimSayisi = readTodaySteps()
             stepCountState.value = adimSayisi
             Log.d("HealthConnect", "Bugünkü adım sayısı: $adimSayisi")
@@ -136,9 +146,21 @@ class MainActivity : ComponentActivity() {
             exerciseSummaryState.value = egzersiz
             Log.d("HealthConnect", "Egzersiz özeti: $egzersiz")
 
-            val tansiyon = readLatestBloodPressure()
-            bloodPressureState.value = tansiyon
-            Log.d("HealthConnect", "Tansiyon: $tansiyon")
+            // Ekran süresi
+            val ekranDk = readScreenTimeToday()
+            screenTimeState.value = if (ekranDk >= 0) "${ekranDk / 60} sa ${ekranDk % 60} dk" else "İzin gerekli"
+            Log.d("HealthConnect", "Ekran süresi (dk): $ekranDk")
+
+            // Eğer saatten uyku verisi gelmediyse, ekran kapalı süresinden tahmin et
+            if (uyku == "Veri yok") {
+                val tahminiDk = estimateSleepFromScreenOff()
+                tahminiUykuState.value = if (tahminiDk >= 0) {
+                    "${tahminiDk / 60} sa ${tahminiDk % 60} dk (tahmini, telefon kullanımına göre)"
+                } else "İzin gerekli"
+                Log.d("HealthConnect", "Tahmini uyku (dk): $tahminiDk")
+            } else {
+                tahminiUykuState.value = null
+            }
 
             statusMessage.value = "Son güncelleme: şimdi"
         }
@@ -160,6 +182,17 @@ class MainActivity : ComponentActivity() {
             )
         )
         return response.records.sumOf { it.count }
+    }
+
+    private suspend fun kaynaklariGoster() {
+        val response = healthConnectClient.readRecords(
+            ReadRecordsRequest(
+                recordType = StepsRecord::class,
+                timeRangeFilter = TimeRangeFilter.between(bugununBaslangici(), Instant.now())
+            )
+        )
+        val kaynaklar = response.records.map { it.metadata.dataOrigin.packageName }.distinct()
+        Log.d("HealthConnect", "Adım verisi kaynakları: $kaynaklar")
     }
 
     // --- KALP ATIŞI (ortalama ve son değer) ---
@@ -224,20 +257,87 @@ class MainActivity : ComponentActivity() {
         return "$adet oturum, toplam $dakika dk"
     }
 
-    // --- TANSİYON (en son ölçüm) ---
-    private suspend fun readLatestBloodPressure(): String {
-        val response = healthConnectClient.readRecords(
-            ReadRecordsRequest(
-                recordType = BloodPressureRecord::class,
-                timeRangeFilter = TimeRangeFilter.between(bugununBaslangici(), Instant.now())
-            )
+    // --- KULLANIM ERİŞİMİ İZNİ VAR MI KONTROL ET ---
+    private fun kullanimErisimiIzniVarMi(): Boolean {
+        val appOps = getSystemService(APP_OPS_SERVICE) as AppOpsManager
+        val mode = appOps.checkOpNoThrow(
+            AppOpsManager.OPSTR_GET_USAGE_STATS,
+            Process.myUid(),
+            packageName
         )
+        return mode == AppOpsManager.MODE_ALLOWED
+    }
 
-        val sonOlcum = response.records.maxByOrNull { it.time } ?: return "Veri yok"
+    // --- KULLANICIYI İZİN VERMESİ İÇİN AYARLAR'A YÖNLENDİR ---
+    private fun kullanimErisimiAyarlarinaGit() {
+        val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
+        startActivity(intent)
+    }
 
-        val sistolik = sonOlcum.systolic.inMillimetersOfMercury.toInt()
-        val diyastolik = sonOlcum.diastolic.inMillimetersOfMercury.toInt()
-        return "$sistolik/$diyastolik mmHg"
+    // --- BUGÜNKÜ TOPLAM EKRAN SÜRESİ (dakika) ---
+    private fun readScreenTimeToday(): Long {
+        if (!kullanimErisimiIzniVarMi()) return -1L
+
+        val usageStatsManager = getSystemService(USAGE_STATS_SERVICE) as UsageStatsManager
+        val startTime = bugununBaslangici().toEpochMilli()
+        val endTime = Instant.now().toEpochMilli()
+
+        val events = usageStatsManager.queryEvents(startTime, endTime)
+        var toplamMs = 0L
+        var sonAcilmaZamani: Long? = null
+
+        val event = UsageEvents.Event()
+        while (events.hasNextEvent()) {
+            events.getNextEvent(event)
+            when (event.eventType) {
+                UsageEvents.Event.SCREEN_INTERACTIVE -> {
+                    sonAcilmaZamani = event.timeStamp
+                }
+                UsageEvents.Event.SCREEN_NON_INTERACTIVE -> {
+                    if (sonAcilmaZamani != null) {
+                        toplamMs += event.timeStamp - sonAcilmaZamani
+                        sonAcilmaZamani = null
+                    }
+                }
+            }
+        }
+
+        return toplamMs / 1000 / 60
+    }
+
+    // --- GECE SAATLERİNDE EKRANIN EN UZUN KAPALI KALDIĞI SÜRE (tahmini uyku) ---
+    private fun estimateSleepFromScreenOff(): Long {
+        if (!kullanimErisimiIzniVarMi()) return -1L
+
+        val usageStatsManager = getSystemService(USAGE_STATS_SERVICE) as UsageStatsManager
+        val zoneId = ZoneId.systemDefault()
+
+        val today = LocalDate.now(zoneId)
+        val startTime = today.minusDays(1).atTime(18, 0).atZone(zoneId).toInstant().toEpochMilli()
+        val endTime = today.atTime(12, 0).atZone(zoneId).toInstant().toEpochMilli()
+
+        val events = usageStatsManager.queryEvents(startTime, endTime)
+        var enUzunKapaliSure = 0L
+        var kapanmaZamani: Long? = null
+
+        val event = UsageEvents.Event()
+        while (events.hasNextEvent()) {
+            events.getNextEvent(event)
+            when (event.eventType) {
+                UsageEvents.Event.SCREEN_NON_INTERACTIVE -> {
+                    kapanmaZamani = event.timeStamp
+                }
+                UsageEvents.Event.SCREEN_INTERACTIVE -> {
+                    if (kapanmaZamani != null) {
+                        val sure = event.timeStamp - kapanmaZamani
+                        if (sure > enUzunKapaliSure) enUzunKapaliSure = sure
+                        kapanmaZamani = null
+                    }
+                }
+            }
+        }
+
+        return enUzunKapaliSure / 1000 / 60
     }
 }
 
@@ -248,9 +348,11 @@ fun AnaEkran(
     sonNabiz: Long?,
     uykuSuresi: String?,
     egzersizOzeti: String?,
-    tansiyon: String?,
+    ekranSuresi: String?,
+    tahminiUyku: String?,
     durumMesaji: String,
-    onYenileTiklandi: () -> Unit
+    onYenileTiklandi: () -> Unit,
+    onIzinIste: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -260,6 +362,12 @@ fun AnaEkran(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
+        if (ekranSuresi == "İzin gerekli") {
+            Button(onClick = onIzinIste) {
+                Text("Kullanım İzni Ver")
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+        }
 
         VeriKarti(baslik = "Bugünkü Adım Sayısı", deger = adimSayisi?.toString() ?: "-")
         Spacer(modifier = Modifier.height(16.dp))
@@ -272,12 +380,15 @@ fun AnaEkran(
         Spacer(modifier = Modifier.height(16.dp))
 
         VeriKarti(baslik = "Uyku Süresi (son 24 saat)", deger = uykuSuresi ?: "-")
+        if (tahminiUyku != null) {
+            Text(text = tahminiUyku, style = MaterialTheme.typography.bodySmall)
+        }
         Spacer(modifier = Modifier.height(16.dp))
 
         VeriKarti(baslik = "Bugünkü Egzersiz", deger = egzersizOzeti ?: "-")
         Spacer(modifier = Modifier.height(16.dp))
 
-        VeriKarti(baslik = "Tansiyon", deger = tansiyon ?: "-")
+        VeriKarti(baslik = "Ekran Süresi (bugün)", deger = ekranSuresi ?: "-")
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(text = durumMesaji, style = MaterialTheme.typography.bodySmall)
