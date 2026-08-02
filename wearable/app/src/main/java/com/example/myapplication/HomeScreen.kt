@@ -38,11 +38,16 @@ private val MainTeal = Color(0xFF1D6679)
 private val SoftGreen = Color(0xFFD4F3DF)
 
 @Composable
-fun HomeScreen() {
+fun HomeScreen(
+    onOpenCrisis: () -> Unit = {},
+    onNavigate: (String) -> Unit = {}
+) {
     Scaffold(
         containerColor = ScreenBackground,
         bottomBar = {
-            DashboardBottomBar()
+            DashboardBottomBar(
+                onNavigate = onNavigate
+            )
         }
     ) { innerPadding ->
 
@@ -75,7 +80,9 @@ fun HomeScreen() {
             }
 
             item {
-                SupportRequestButton()
+                SupportRequestButton(
+                    onClick = onOpenCrisis
+                )
             }
 
             item {
@@ -422,31 +429,24 @@ private fun RecoveryJourneyCard() {
 }
 
 @Composable
-private fun SupportRequestButton() {
+private fun SupportRequestButton(
+    onClick: () -> Unit
+) {
     Button(
-        onClick = { },
+        onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
             .height(64.dp),
         shape = RoundedCornerShape(18.dp),
         colors = ButtonDefaults.buttonColors(
-            containerColor = Color(0xFFD96849),
-            contentColor = Color.White
-        ),
-        contentPadding = PaddingValues(horizontal = 20.dp)
+            containerColor = Color(0xFFD96849)
+        )
     ) {
         Text(
-            text = "ⓘ",
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold
-        )
-
-        Spacer(modifier = Modifier.width(10.dp))
-
-        Text(
-            text = "Desteğe İhtiyacım Var",
+            text = "ⓘ  Destek Talebi",
             fontSize = 18.sp,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            color = Color.White
         )
     }
 }
@@ -511,7 +511,9 @@ private fun QuickActionCard(
 }
 
 @Composable
-private fun DashboardBottomBar() {
+private fun DashboardBottomBar(
+    onNavigate: (String) -> Unit
+) {
     var selectedItem by remember {
         mutableIntStateOf(0)
     }
@@ -519,19 +521,23 @@ private fun DashboardBottomBar() {
     val navigationItems = listOf(
         BottomNavigationItem(
             symbol = "⌂",
-            title = "Ana Sayfa"
-        ),
-        BottomNavigationItem(
-            symbol = "✓",
-            title = "Kontrol"
+            title = "Ana Sayfa",
+            route = "home"
         ),
         BottomNavigationItem(
             symbol = "▤",
-            title = "Rapor"
+            title = "Rapor",
+            route = "report"
         ),
         BottomNavigationItem(
-            symbol = "★",
-            title = "Market" //farklı bişi bul
+            symbol = "✓",
+            title = "Görevler",
+            route = "tasks"
+        ),
+        BottomNavigationItem(
+            symbol = "🛒",
+            title = "Market",
+            route = "market"
         )
     )
 
@@ -545,6 +551,7 @@ private fun DashboardBottomBar() {
                 selected = selectedItem == index,
                 onClick = {
                     selectedItem = index
+                    onNavigate(item.route)
                 },
                 icon = {
                     Text(
@@ -571,6 +578,7 @@ private fun DashboardBottomBar() {
 }
 private data class BottomNavigationItem(
     val symbol: String,
-    val title: String
+    val title: String,
+    val route: String
 )
 

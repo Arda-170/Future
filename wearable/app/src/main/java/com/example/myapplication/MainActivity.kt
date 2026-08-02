@@ -35,7 +35,10 @@ import java.time.LocalDate
 import java.time.ZoneId
 import androidx.health.connect.client.records.metadata.DataOrigin
 import androidx.compose.material3.MaterialTheme
-
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 class MainActivity : ComponentActivity() {
 
     private val healthConnectClient by lazy {
@@ -76,8 +79,76 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             MaterialTheme {
-                HomeScreen()
-                //CrisisScreen()
+
+                var currentScreen by remember {
+                    mutableStateOf("onboarding")
+                }
+
+                when (currentScreen) {
+
+                    "onboarding" -> {
+                        OnboardingScreen(
+                            onFinish = {
+                                currentScreen = "consent"
+                            }
+                        )
+                    }
+
+                    "consent" -> {
+                        KvkkScreen(
+                            onBack = {
+                                currentScreen = "onboarding"
+                            },
+                            onAccept = {
+                                currentScreen = "home"
+                            }
+                        )
+                    }
+
+                    "home" -> {
+                        HomeScreen(
+                            onOpenCrisis = {
+                                currentScreen = "crisis"
+                            },
+                            onNavigate = { destination ->
+                                currentScreen = destination
+                            }
+                        )
+                    }
+
+                    "crisis" -> {
+                        CrisisScreen(
+                            onBack = {
+                                currentScreen = "home"
+                            }
+                        )
+                    }
+
+                    "report" -> {
+                        ReportScreen(
+                            onBack = {
+                                currentScreen = "home"
+                            }
+                        )
+                    }
+
+                    "tasks" -> {
+                        TasksScreen(
+                            onBack = {
+                                currentScreen = "home"
+                            }
+                        )
+                    }
+
+                    "market" -> {
+                        MarketScreen(
+                            onBack = {
+                                currentScreen = "home"
+                            }
+                        )
+                    }
+
+                }
             }
         }
 
