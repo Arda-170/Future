@@ -34,6 +34,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import androidx.health.connect.client.records.metadata.DataOrigin
+import androidx.compose.material3.MaterialTheme
 
 class MainActivity : ComponentActivity() {
 
@@ -75,6 +76,14 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             MaterialTheme {
+                HomeScreen()
+                //CrisisScreen()
+            }
+        }
+
+        /*
+        setContent {
+            MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     AnaEkran(
                         adimSayisi = stepCountState.value,
@@ -90,8 +99,7 @@ class MainActivity : ComponentActivity() {
                     )
                 }
             }
-        }
-
+        }*/
         checkHealthConnectDurumu()
     }
 
