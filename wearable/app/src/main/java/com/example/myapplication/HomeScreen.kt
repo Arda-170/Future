@@ -39,6 +39,10 @@ private val SoftGreen = Color(0xFFD4F3DF)
 
 @Composable
 fun HomeScreen(
+    adimSayisi: Long? = null,
+    ortalamaNabiz: Long? = null,
+    uykuSuresi: String? = null,
+    tahminiUyku: String? = null,
     onOpenCrisis: () -> Unit = {},
     onNavigate: (String) -> Unit = {}
 ) {
@@ -80,9 +84,7 @@ fun HomeScreen(
             }
 
             item {
-                SupportRequestButton(
-                    onClick = onOpenCrisis
-                )
+                SupportRequestButton()
             }
 
             item {
@@ -429,24 +431,31 @@ private fun RecoveryJourneyCard() {
 }
 
 @Composable
-private fun SupportRequestButton(
-    onClick: () -> Unit
-) {
+private fun SupportRequestButton() {
     Button(
-        onClick = onClick,
+        onClick = { },
         modifier = Modifier
             .fillMaxWidth()
             .height(64.dp),
         shape = RoundedCornerShape(18.dp),
         colors = ButtonDefaults.buttonColors(
-            containerColor = Color(0xFFD96849)
-        )
+            containerColor = Color(0xFFD96849),
+            contentColor = Color.White
+        ),
+        contentPadding = PaddingValues(horizontal = 20.dp)
     ) {
         Text(
-            text = "ⓘ  Destek Talebi",
+            text = "ⓘ",
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold
+        )
+
+        Spacer(modifier = Modifier.width(10.dp))
+
+        Text(
+            text = "Desteğe İhtiyacım Var",
             fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.White
+            fontWeight = FontWeight.Bold
         )
     }
 }
@@ -509,7 +518,6 @@ private fun QuickActionCard(
 
     }
 }
-
 @Composable
 private fun DashboardBottomBar(
     onNavigate: (String) -> Unit
@@ -542,11 +550,14 @@ private fun DashboardBottomBar(
     )
 
     NavigationBar(
-        containerColor = Color.White,
-        tonalElevation = 6.dp
+        containerColor = Color.White
     ) {
-        navigationItems.forEachIndexed { index, item ->
 
+        var selectedItem by remember {
+            mutableIntStateOf(0)
+        }
+
+        navigationItems.forEachIndexed { index, item ->
             NavigationBarItem(
                 selected = selectedItem == index,
                 onClick = {
@@ -564,14 +575,7 @@ private fun DashboardBottomBar(
                         text = item.title,
                         fontSize = 10.sp
                     )
-                },
-                colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = MainTeal,
-                    selectedTextColor = MainTeal,
-                    indicatorColor = Color(0xFFDCEFF2),
-                    unselectedIconColor = SecondaryText,
-                    unselectedTextColor = SecondaryText
-                )
+                }
             )
         }
     }
