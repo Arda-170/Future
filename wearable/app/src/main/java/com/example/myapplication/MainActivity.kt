@@ -76,7 +76,12 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             MaterialTheme {
-                HomeScreen()
+                HomeScreen(
+                    adimSayisi = stepCountState.value,
+                    ortalamaNabiz = avgHeartRateState.value,
+                    uykuSuresi = sleepDurationState.value,
+                    tahminiUyku = tahminiUykuState.value
+                )
                 //CrisisScreen()
             }
         }

@@ -38,7 +38,13 @@ private val MainTeal = Color(0xFF1D6679)
 private val SoftGreen = Color(0xFFD4F3DF)
 
 @Composable
-fun HomeScreen() {
+
+fun HomeScreen(
+    adimSayisi: Long? = null,
+    ortalamaNabiz: Long? = null,
+    uykuSuresi: String? = null,
+    tahminiUyku: String? = null
+) {
     Scaffold(
         containerColor = ScreenBackground,
         bottomBar = {
@@ -63,11 +69,16 @@ fun HomeScreen() {
             }
 
             item {
-                DailyStatusCard()
+                DailyStatusCard(
+                    uykuSuresi = uykuSuresi ?: tahminiUyku
+                )
             }
 
             item {
-                HealthDataCards()
+                HealthDataCards(
+                    adimSayisi = adimSayisi,
+                    ortalamaNabiz = ortalamaNabiz
+                )
             }
 
             item {
@@ -124,7 +135,7 @@ private fun DashboardHeader() {
 }
 
 @Composable
-private fun DailyStatusCard() {
+private fun DailyStatusCard(uykuSuresi: String? = null) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
@@ -155,7 +166,7 @@ private fun DailyStatusCard() {
             )
 
             Text(
-                text = "Ruh hali: Sakin   •   Uyku: 7,2 saat   •   İstek: Düşük",
+                text = "Ruh hali: Sakin   •   Uyku: ${uykuSuresi ?: "Veri yok"}   •   İstek: Düşük",
                 modifier = Modifier.padding(top = 20.dp),
                 fontSize = 13.sp,
                 color = Color.White
@@ -164,7 +175,10 @@ private fun DailyStatusCard() {
     }
 }
 @Composable
-private fun HealthDataCards() {
+private fun HealthDataCards(
+    adimSayisi: Long? = null,
+    ortalamaNabiz: Long? = null
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -172,9 +186,9 @@ private fun HealthDataCards() {
         HealthCard(
             modifier = Modifier.weight(1f),
             title = "NABIZ",
-            value = "72",
+            value = ortalamaNabiz?.toString() ?: "-",
             unit = "bpm",
-            description = "Dinlenme · Normal",
+            description = "Ortalama · Bugün",
             symbol = "♥",
             backgroundColor = Color(0xFFFFE2DA),
             accentColor = Color(0xFFDE725B)
@@ -183,9 +197,9 @@ private fun HealthDataCards() {
         HealthCard(
             modifier = Modifier.weight(1f),
             title = "ADIM",
-            value = "6.241",
+            value = adimSayisi?.toString() ?: "-",
             unit = "adım",
-            description = "Günlük hedefin %83'ü",
+            description = "Bugünkü toplam",
             symbol = "⌁",
             backgroundColor = Color(0xFFD6EFF6),
             accentColor = Color(0xFF287B98)
