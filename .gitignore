@@ -1,0 +1,6 @@
+.env
+*.json.key
+*firebase-adminsdk*.json
+test-setup.ps1
+.vscode/
+backend/supabase/.temp/
