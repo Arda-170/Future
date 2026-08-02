@@ -110,9 +110,11 @@ class MainActivity : ComponentActivity() {
             HealthConnectClient.SDK_UNAVAILABLE -> {
                 statusMessage.value = "Bu cihaz Health Connect'i desteklemiyor"
             }
+
             HealthConnectClient.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED -> {
                 statusMessage.value = "Health Connect güncellemesi/kurulumu gerekiyor"
             }
+
             HealthConnectClient.SDK_AVAILABLE -> {
                 checkAndRequestPermissions()
             }
@@ -156,16 +158,14 @@ class MainActivity : ComponentActivity() {
 
             // Ekran süresi
             val ekranDk = readScreenTimeToday()
-            screenTimeState.value = if (ekranDk >= 0) "${ekranDk / 60} sa ${ekranDk % 60} dk" else "İzin gerekli"
+            screenTimeState.value =
+                if (ekranDk >= 0) "${ekranDk / 60} sa ${ekranDk % 60} dk" else "İzin gerekli"
             Log.d("HealthConnect", "Ekran süresi (dk): $ekranDk")
 
             // Eğer saatten uyku verisi gelmediyse, ekran kapalı süresinden tahmin et
             if (uyku == "Veri yok") {
-                val tahminiDk = estimateSleepFromScreenOff()
-                tahminiUykuState.value = if (tahminiDk >= 0) {
-                    "${tahminiDk / 60} sa ${tahminiDk % 60} dk (tahmini, telefon kullanımına göre)"
-                } else "İzin gerekli"
-                Log.d("HealthConnect", "Tahmini uyku (dk): $tahminiDk")
+                tahminiUykuState.value = estimateSleepFromScreenOff()
+
             } else {
                 tahminiUykuState.value = null
             }
@@ -301,6 +301,7 @@ class MainActivity : ComponentActivity() {
                 UsageEvents.Event.SCREEN_INTERACTIVE -> {
                     sonAcilmaZamani = event.timeStamp
                 }
+
                 UsageEvents.Event.SCREEN_NON_INTERACTIVE -> {
                     if (sonAcilmaZamani != null) {
                         toplamMs += event.timeStamp - sonAcilmaZamani
@@ -313,42 +314,64 @@ class MainActivity : ComponentActivity() {
         return toplamMs / 1000 / 60
     }
 
-    // --- GECE SAATLERİNDE EKRANIN EN UZUN KAPALI KALDIĞI SÜRE (tahmini uyku) ---
-    private fun estimateSleepFromScreenOff(): Long {
-        if (!kullanimErisimiIzniVarMi()) return -1L
+    // --- GECE SAATLERİNDE EKRANIN EN UZUN KAPALI KALDIĞI ARALIK (başlangıç-bitiş saatiyle) ---
+    private fun estimateSleepFromScreenOff(): String {
+        if (!kullanimErisimiIzniVarMi()) return "İzin gerekli"
 
         val usageStatsManager = getSystemService(USAGE_STATS_SERVICE) as UsageStatsManager
         val zoneId = ZoneId.systemDefault()
 
+        // Dünkü öğlen 12:00'den bugünkü şu ana kadar bak (geniş pencere, gece mutlaka içinde kalsın)
         val today = LocalDate.now(zoneId)
-        val startTime = today.minusDays(1).atTime(18, 0).atZone(zoneId).toInstant().toEpochMilli()
-        val endTime = today.atTime(12, 0).atZone(zoneId).toInstant().toEpochMilli()
+        val startTime = today.minusDays(1).atTime(12, 0).atZone(zoneId).toInstant().toEpochMilli()
+        val endTime = Instant.now().toEpochMilli()
 
         val events = usageStatsManager.queryEvents(startTime, endTime)
-        var enUzunKapaliSure = 0L
-        var kapanmaZamani: Long? = null
+
+        var enUzunSure = 0L
+        var enUzunBaslangic: Long? = null
+        var enUzunBitis: Long? = null
+
+        var suankiKapanmaZamani: Long? = null
 
         val event = UsageEvents.Event()
         while (events.hasNextEvent()) {
             events.getNextEvent(event)
             when (event.eventType) {
                 UsageEvents.Event.SCREEN_NON_INTERACTIVE -> {
-                    kapanmaZamani = event.timeStamp
+                    // Ekran kapandı, bu anı not al
+                    suankiKapanmaZamani = event.timeStamp
                 }
+
                 UsageEvents.Event.SCREEN_INTERACTIVE -> {
-                    if (kapanmaZamani != null) {
-                        val sure = event.timeStamp - kapanmaZamani
-                        if (sure > enUzunKapaliSure) enUzunKapaliSure = sure
-                        kapanmaZamani = null
+                    // Ekran açıldı, eğer daha önce bir kapanma anı kaydettiysek süreyi hesapla
+                    if (suankiKapanmaZamani != null) {
+                        val sure = event.timeStamp - suankiKapanmaZamani!!
+                        if (sure > enUzunSure) {
+                            enUzunSure = sure
+                            enUzunBaslangic = suankiKapanmaZamani
+                            enUzunBitis = event.timeStamp
+                        }
+                        suankiKapanmaZamani = null
                     }
                 }
             }
         }
 
-        return enUzunKapaliSure / 1000 / 60
+        if (enUzunBaslangic == null || enUzunBitis == null) {
+            return "Veri yetersiz"
+        }
+
+        val formatter = java.time.format.DateTimeFormatter.ofPattern("HH:mm")
+        val baslangicSaat = Instant.ofEpochMilli(enUzunBaslangic!!).atZone(zoneId).format(formatter)
+        val bitisSaat = Instant.ofEpochMilli(enUzunBitis!!).atZone(zoneId).format(formatter)
+
+        val saat = enUzunSure / 1000 / 60 / 60
+        val dakika = (enUzunSure / 1000 / 60) % 60
+
+        return "$baslangicSaat - $bitisSaat (${saat} sa ${dakika} dk, tahmini)"
     }
 }
-
 @Composable
 fun AnaEkran(
     adimSayisi: Long?,
