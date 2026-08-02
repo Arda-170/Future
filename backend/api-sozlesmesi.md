@@ -1,4 +1,4 @@
-# API Sözleşmesi — v1
+# API Sözleşmesi — v1.1
 
 TEKNOFEST Bağımlılıklarla Mücadelede Teknolojik Uygulamalar
 Backend: Supabase (PostgreSQL + PostgREST + Edge Functions)
@@ -16,16 +16,19 @@ Backend: Supabase (PostgreSQL + PostgREST + Edge Functions)
 | Tür | Ne zaman | Nasıl |
 |---|---|---|
 | **Doğrudan tablo** | Kullanıcının kendi verisini yazması/okuması | Supabase SDK (`supabase.from(...)`) |
-| **Edge Function** | Sonucu sunucunun belirlemesi gereken işler | HTTP POST (`supabase.functions.invoke(...)`) |
+| **Edge Function** | Sonucu sunucunun belirlemesi gereken işler | `supabase.functions.invoke(...)` |
 
-**Neden bu ayrım:** Kullanıcının lehine sonuç doğuran hiçbir şey istemciden yazılamaz.
-Risk skoru, puan, rozet, eskalasyon → yalnızca sunucu yazar.
+**Neden bu ayrım:** Kullanıcının lehine sonuç doğuran hiçbir şey istemciden
+yazılamaz. Risk skoru, puan, rozet, eskalasyon → yalnızca sunucu yazar.
 
 **Kimlik doğrulama:** Tüm çağrılarda Supabase Auth JWT'si otomatik gider.
-`auth.uid()` RLS tarafından okunur; istemci hiçbir yerde `user_id` göndermez
-(gönderse bile RLS reddeder).
+`auth.uid()` RLS tarafından okunur.
 
-**Zaman formatı:** Tüm zamanlar ISO 8601 + UTC offset.
+**`user_id` göndermeyin.** İlgili tablolarda bu alanın varsayılan değeri
+`auth.uid()` olarak tanımlıdır; veritabanı JWT'den otomatik doldurur.
+Gönderirseniz de RLS başkasının id'sini reddeder.
+
+**Zaman formatı:** ISO 8601 + UTC offset.
 Örnek: `2026-08-01T23:14:00+03:00`
 
 **Hata formatı (Edge Function'lar):**
@@ -37,14 +40,15 @@ Risk skoru, puan, rozet, eskalasyon → yalnızca sunucu yazar.
 
 ## 1. Onboarding akışı
 
-Sıra önemlidir. Rıza alınmadan sağlık verisi gönderilmesi sunucuda reddedilir.
+Sıra önemlidir. Rıza alınmadan risk hesaplaması sunucuda reddedilir.
 
 ```
 1. Kayıt / giriş        → supabase.auth.signUp / signInWithPassword
 2. Profil oluştur       → profiles insert
 3. Rıza ekranları       → consents insert  (her tip için ayrı satır)
 4. Health Connect izni  → (Android tarafı, sunucuyu ilgilendirmez)
-5. İlk senkronizasyon   → health_samples insert
+5. FCM token kaydı      → register-device
+6. İlk senkronizasyon   → health_samples insert
 ```
 
 ### 1.1 Profil oluşturma
@@ -60,17 +64,20 @@ supabase.from("profiles").insert(
 )
 ```
 
+`profiles` tablosunda birincil anahtar `id`'dir ve açıkça gönderilir —
+tek istisna budur.
+
 ### 1.2 Rıza kaydı — KVKK açık rıza
 
-Her rıza tipi için ayrı satır. Kullanıcı rızayı geri çekerse satır **silinmez**,
-`revoked_at` doldurulur.
+Her rıza tipi için ayrı satır. Kullanıcı rızayı geri çekerse satır
+**silinmez**, `revoked_at` doldurulur.
 
 ```kotlin
 supabase.from("consents").insert(
   listOf(
-    mapOf("kind" to "health_data",      "text_version" to "saglik-verisi-v1.0"),
-    mapOf("kind" to "location",         "text_version" to "konum-v1.0"),
-    mapOf("kind" to "notifications",    "text_version" to "bildirim-v1.0")
+    mapOf("kind" to "health_data",   "text_version" to "saglik-verisi-v1.0"),
+    mapOf("kind" to "location",      "text_version" to "konum-v1.0"),
+    mapOf("kind" to "notifications", "text_version" to "bildirim-v1.0")
   )
 )
 ```
@@ -93,12 +100,6 @@ supabase.from("consents")
 
 **Tablo:** `health_samples` — doğrudan insert.
 
-```kotlin
-supabase.from("health_samples").insert(samples)
-```
-
-Her örnek:
-
 | Alan | Tip | Zorunlu | Not |
 |---|---|---|---|
 | `client_uid` | text | ✅ | Deterministik üretilir — aşağıya bak |
@@ -113,10 +114,14 @@ Her örnek:
 `heart_rate` · `resting_heart_rate` · `hrv` · `sleep_session` · `sleep_stage` ·
 `stress` · `spo2` · `steps` · `screen_time` · `app_open`
 
+> **Not:** Risk motoru şu dört sinyali kullanır: `sleep_session`, `hrv`,
+> `resting_heart_rate`, `screen_time`. Diğerleri saklanır ama skora
+> girmez. `stress` bilinçli olarak kullanılmamaktadır (bkz. README).
+
 ### 2.2 `client_uid` üretimi — KRİTİK
 
-Rastgele UUID **kullanma**. Aynı veri Health Connect'ten tekrar okunduğunda
-çift kayıt oluşur. Deterministik üret:
+Rastgele UUID **kullanmayın**. Aynı veri Health Connect'ten tekrar
+okunduğunda çift kayıt oluşur. Deterministik üretin:
 
 ```kotlin
 fun clientUid(metric: String, startTime: Instant, source: String): String {
@@ -128,24 +133,30 @@ fun clientUid(metric: String, startTime: Instant, source: String): String {
 }
 ```
 
-Veritabanında `unique (user_id, client_uid)` var. Aynı kayıt ikinci kez
-gelirse insert hata döner — bu **beklenen** durumdur, sessizce yut:
+Veritabanında `unique (user_id, client_uid)` kısıtı var. Aynı kayıt ikinci
+kez gelirse insert hata döner — bu **beklenen** durumdur:
 
 ```kotlin
 supabase.from("health_samples")
   .upsert(samples, onConflict = "user_id,client_uid", ignoreDuplicates = true)
 ```
 
-### 2.3 Offline kuyruk
+### 2.3 Gece ekran süresi
 
-Telefon çevrimdışıyken veriyi yerel Room veritabanına yaz, bağlantı gelince
-gönder. `client_uid` deterministik olduğu için tekrar gönderim güvenlidir.
+`screen_time` örneklerinin `start_time` değeri doğru olmalı — sunucu
+yerel saat 00:00–06:00 arasındaki kayıtları ayrıca toplar ve bunu bir risk
+sinyali olarak kullanır. Günlük toplamı tek bir kayıt olarak göndermek bu
+sinyali yok eder; en azından gece/gündüz ayrımı yapılmalıdır.
+
+### 2.4 Offline kuyruk
+
+Telefon çevrimdışıyken veriyi yerel Room veritabanına yazın, bağlantı
+gelince gönderin. `client_uid` deterministik olduğu için tekrar gönderim
+güvenlidir.
 
 **Parti büyüklüğü:** tek istekte en fazla 500 örnek.
 
-### 2.4 Nereden devam edileceğini bulma
-
-En son gönderilen kaydın zamanını sor, Health Connect'ten oradan itibaren oku:
+### 2.5 Nereden devam edileceğini bulma
 
 ```kotlin
 supabase.from("health_samples")
@@ -170,8 +181,9 @@ supabase.from("daily_aggregates")
   .order("day", Order.DESCENDING)
 ```
 
-Dönen alanlar: `day`, `sleep_minutes`, `sleep_efficiency`, `avg_hrv`,
-`resting_hr`, `avg_stress`, `step_count`, `screen_time_min`, `night_screen_min`
+Alanlar: `day`, `sleep_minutes`, `sleep_efficiency`, `avg_hrv`,
+`resting_hr`, `avg_stress`, `step_count`, `screen_time_min`,
+`night_screen_min`
 
 ### 3.2 Risk skoru
 
@@ -186,22 +198,42 @@ supabase.from("risk_scores")
 {
   "id": "…",
   "for_day": "2026-08-01",
-  "score": 68,
+  "score": 49,
   "level": "moderate",
   "factors": {
-    "sleep_drop":   { "z": -1.8, "weight": 0.3, "label": "Uyku süresi düştü" },
-    "hrv_drop":     { "z": -2.1, "weight": 0.3, "label": "HRV normalin altında" },
-    "night_screen": { "z":  1.4, "weight": 0.2, "label": "Gece ekran süresi arttı" }
+    "sleep_drop": {
+      "z": 1.49, "weight": 0.30,
+      "value": 410, "baseline": 428.9,
+      "label": "Uyku süresi normalinin altında"
+    },
+    "hrv_drop": {
+      "z": 1.54, "weight": 0.25,
+      "value": 52.3, "baseline": 55.4,
+      "label": "Kalp atım değişkenliği düşmüş"
+    }
   },
   "model_version": "rule-v1"
 }
 ```
 
-**UI ekibine not:** `factors` içindeki `label` alanlarını kullanıcıya doğrudan
-göster. "Skorun 68" demek yetmez; **neden** olduğunu göstermek hem etik
-zorunluluk hem de jüri sunumunda savunulabilirliğin temeli.
+**UI ekibine not:** `factors` içindeki `label`, `value` ve `baseline`
+alanlarını kullanıcıya gösterin. `z` ve `weight` iç hesaplama detayıdır,
+gösterilmez.
 
-`level` değerleri: `low` (0-39) · `moderate` (40-69) · `high` (70-100)
+Örnek gösterim: *"Uyku süresi normalinin altında — 410 dk (normalin 429 dk)"*
+
+Sadece skoru göstermek yeterli değildir. Sistem kararını açıklamalıdır.
+
+`level` değerleri: `low` (0–39) · `moderate` (40–69) · `high` (70–100)
+
+**Yetersiz veri durumu:** İlk 7 gün skor üretilmez. Bu durumda
+`compute-risk` şunu döner:
+
+```json
+{ "status": "insufficient_data", "days_available": 3, "days_required": 7 }
+```
+
+Ekranda "veri toplanıyor" durumu gösterin, sıfır skor göstermeyin.
 
 ---
 
@@ -210,7 +242,7 @@ zorunluluk hem de jüri sunumunda savunulabilirliğin temeli.
 ### 4.1 Zone yönetimi — doğrudan tablo
 
 Zone'ları **yalnızca kullanıcı** ekler. Uygulama arka planda gizli lokasyon
-tanımlamaz. Bu bir mahremiyet taahhüdüdür, raporda da böyle yazılacak.
+tanımlamaz. Bu bir mahremiyet taahhüdüdür.
 
 ```kotlin
 // Ekleme
@@ -252,15 +284,18 @@ Kullanıcının gün içi hareket izi hiçbir yerde birikmez.
 **Android tarafı:** `GeofencingClient` kullanın, ham GPS polling yapmayın —
 pil tüketimi projeyi bitirir.
 
+**Sunucu davranışı:** Giriş olayı eskalasyon başlatmaz. Destekleyici bir
+push bildirimi gönderilir, aynı zone için 6 saatte bir.
+
 ---
 
 ## 5. Ödül sistemi — sadece okuma
 
-Puanı **istemci yazamaz**. Puan veren tek yer sunucudaki Edge Function'dır.
+Puanı **istemci yazamaz**. Puan veren tek yer sunucudur.
 
 ```kotlin
 // Bakiye
-supabase.from("v_points_balance").select().single()   // { balance: 340 }
+supabase.from("v_points_balance").select().single()   // { balance: 25 }
 
 // Hareket geçmişi
 supabase.from("points_ledger")
@@ -271,10 +306,16 @@ supabase.from("badges").select()
 
 // Kazanılan rozetler
 supabase.from("user_badges").select("badge_code, earned_at")
+
+// Kesintisiz seri (gün sayısı)
+supabase.rpc("get_checkin_streak", mapOf("p_user" to userId))
 ```
 
-`reason` değerleri: `daily_checkin` · `clean_day` · `zone_avoided` ·
-`sleep_goal` · `streak_bonus`
+`reason` değerleri: `daily_checkin` (10) · `reached_out` (15) ·
+`clean_day` (5) · `sleep_goal` · `streak_bonus`
+
+`badge_code` değerleri: `first_step` · `week_streak` · `month_streak` ·
+`good_sleep` · `zone_avoided` · `reached_out`
 
 ---
 
@@ -291,15 +332,12 @@ supabase.from("emergency_contacts").insert(
 )
 ```
 
-`verified_at` alanı **sunucu tarafından** doldurulur. Doğrulanmamış kişiye
-bildirim gönderilmez — yanlışlıkla girilen bir numaraya kriz bildirimi
-gitmesini engeller.
+`verified_at` alanı **sunucu tarafından** doldurulur ve doğrulama akışı
+zorunludur (bkz. 7.4). Doğrulanmamış kişiye bildirim gönderilmez.
 
 ---
 
 ## 7. Edge Function'lar
-
-Çağrım şekli:
 
 ```kotlin
 val result = supabase.functions.invoke("fonksiyon-adi") {
@@ -307,22 +345,31 @@ val result = supabase.functions.invoke("fonksiyon-adi") {
 }
 ```
 
-### 7.1 `POST /functions/v1/compute-risk`
+### 7.1 `compute-risk`
 
-Günlük özeti hesaplar ve risk skoru üretir. Normalde `pg_cron` ile
-otomatik çalışır; istemci sadece "yenile" butonu için çağırabilir.
+Günlük özeti üretir ve risk skoru hesaplar. Normalde her gece 03:00'te
+otomatik çalışır; istemci "yenile" butonu için de çağırabilir.
 
 İstek: `{ "day": "2026-08-01" }` (opsiyonel, varsayılan bugün)
 
 Yanıt:
 ```json
-{ "score": 68, "level": "moderate", "risk_score_id": "…", "escalation_started": true }
+{
+  "status": "ok",
+  "score": 49,
+  "level": "moderate",
+  "factors": { },
+  "baseline_days": 14,
+  "escalation_started": false
+}
 ```
 
 `escalation_started` true dönerse kullanıcıya birazdan check-in bildirimi
 gidecek demektir.
 
-### 7.2 `POST /functions/v1/checkin-respond`
+Rıza yoksa `403 CONSENT_REQUIRED` döner.
+
+### 7.2 `checkin-respond`
 
 Kullanıcı check-in bildirimine cevap verdiğinde çağrılır.
 
@@ -335,7 +382,7 @@ Kullanıcı check-in bildirimine cevap verdiğinde çağrılır.
 
 Yanıt (`ok`):
 ```json
-{ "state": "resolved", "points_awarded": 10 }
+{ "state": "resolved", "points_awarded": 10, "message": "İyi olduğunu duymak güzel." }
 ```
 
 Yanıt (`struggling`):
@@ -343,48 +390,93 @@ Yanıt (`struggling`):
 {
   "state": "support_offered",
   "resources": [
-    { "type": "hotline", "label": "Yeşilay Danışmanlık — ALO 191", "value": "191" },
-    { "type": "contact", "label": "Acil kişini ara", "value": "+905xxxxxxxxx" }
-  ]
+    { "type": "hotline", "label": "YEDAM Danışma Hattı — 115",
+      "value": "115", "note": "Ücretsiz ve gizli" },
+    { "type": "contact", "label": "Mehmet — acil kişin", "value": "+905xxxxxxxxx" }
+  ],
+  "message": "Bunu söylemek cesaret ister. Yalnız değilsin."
 }
 ```
+
+`resources` dizisi doğrulanmış acil kişi yoksa yalnızca hattı içerir.
 
 **UI ekibine not:** `struggling` ekranı sakin ve sade olmalı. Kırmızı renk,
 alarm ikonu, panik yaratan dil yok. Kullanıcı zaten zorlanıyor.
 
-### 7.3 `POST /functions/v1/register-device`
+Kapanmış bir eskalasyona tekrar cevap verilirse `409 ALREADY_CLOSED` döner.
+
+### 7.3 `register-device`
 
 FCM token kaydı. Uygulama her açılışta ve token yenilendiğinde çağırır.
 
 İstek: `{ "fcm_token": "…", "platform": "android" }`
 Yanıt: `{ "ok": true }`
 
-### 7.4 `POST /functions/v1/verify-contact`
+### 7.4 `verify-contact`
 
-Acil kişiye doğrulama SMS'i / bildirimi gönderir.
+İki aşamalı akış.
 
-İstek: `{ "contact_id": "…" }`
-Yanıt: `{ "ok": true, "sent_at": "…" }`
+**Aşama 1 — kod iste:**
+```json
+{ "contact_id": "…" }
+```
+```json
+{ "status": "code_sent", "expires_at": "…" }
+```
 
-### 7.5 `POST /functions/v1/demo/simulate-risk`
+**Aşama 2 — kodu doğrula:**
+```json
+{ "contact_id": "…", "code": "483920" }
+```
+```json
+{ "status": "verified", "contact_name": "Mehmet" }
+```
 
-**Sadece demo günü için.** Sahnede canlı veri akışına güvenmemek adına
-yapay yüksek risk skoru üretir ve eskalasyon akışını tetikler.
+Kod 15 dakika geçerlidir, 5 hatalı denemeden sonra kilitlenir. Yeni kod
+istenirse eskisi geçersiz olur.
 
-İstek: `{ "level": "high" }`
+Doğrulama SMS'inde kullanıcının durumu hakkında hiçbir bilgi yoktur.
 
-Üretim ortamında feature flag ile kapatılacak.
+### 7.5 `delete-my-data` — KVKK md. 7
+
+```json
+{ "confirm": "SIL" }
+```
+
+Onay alanı olmadan `428 CONFIRMATION_REQUIRED` döner.
+
+Yanıt:
+```json
+{
+  "status": "deleted",
+  "records_removed": { "health_samples": 412, "risk_scores": 20 },
+  "message": "Tüm verilerin silindi. Bu işlem geri alınamaz."
+}
+```
+
+**Ayarlar ekranında bu düğme mutlaka bulunmalı.** Çift onay ekranı
+kullanın; işlem geri alınamaz.
+
+### 7.6 `simulate-risk` — DEMO
+
+Sadece demo günü için. Yapay risk skoru üretip eskalasyon zincirini
+tetikler. `DEMO_MODE` kapalıysa `403` döner.
+
+İstek: `{ "level": "high", "bypass_cooldown": true }`
+
+Ürettiği skorlar veritabanında `model_version: "demo-sim"` olarak
+işaretlenir, gerçek skorlardan ayırt edilebilir.
 
 ---
 
 ## 8. Push bildirimleri (FCM)
 
-Sunucudan gelen bildirim tipleri — mobil tarafın `data` payload'ına göre
-yönlendirme yapması gerekir:
+Bildirimler **data-only** gönderilir — görünümü ve davranışı mobil taraf
+kontrol eder. Kriz anı arayüzü için bu önemli.
 
 | `type` | Anlamı | Mobil davranış |
 |---|---|---|
-| `checkin` | Risk tespit edildi, "iyi misin?" | Check-in ekranını aç, `escalation_id` taşı |
+| `checkin` | Risk tespit edildi | Check-in ekranını aç, `escalation_id` taşı |
 | `zone_enter` | Riskli bölgeye girildi | Destekleyici mesaj göster |
 | `badge_earned` | Rozet kazanıldı | Kutlama ekranı |
 | `daily_summary` | Günlük özet hazır | Ana ekranı yenile |
@@ -395,27 +487,18 @@ yönlendirme yapması gerekir:
   "type": "checkin",
   "escalation_id": "…",
   "title": "Nasılsın?",
-  "body": "Son birkaç gündür uykun düzensiz görünüyor. Bir dakikan var mı?"
+  "body": "Son birkaç gündür verilerinde değişiklik var. Bir dakikan var mı?"
 }
 ```
 
----
-
-## 9. Veri silme hakkı (KVKK md. 7)
-
-```kotlin
-supabase.functions.invoke("delete-my-data")
-```
-
-Tüm kullanıcı verisini siler (cascade), `auth.users` kaydını kaldırır,
-`audit_log`'a anonim bir silme kaydı bırakır.
-
-**Ayarlar ekranında bu düğme mutlaka bulunmalı.** Jüri raporda bunu arayacak.
+FCM `data` alanı yalnızca string kabul eder; sayısal değerler string
+olarak gelir.
 
 ---
 
-## 10. Sürüm notları
+## 9. Sürüm notları
 
 | Sürüm | Tarih | Değişiklik |
 |---|---|---|
+| v1.1 | 2026-08-02 | YEDAM hattı 115 olarak düzeltildi (191 yanlıştı); `user_id` varsayılanı eklendi, istemci artık göndermiyor; `process-queue`, `get_checkin_streak` ve rozet kodları eklendi; yetersiz veri yanıtı belgelendi |
 | v1 | 2026-08-01 | İlk sözleşme |
