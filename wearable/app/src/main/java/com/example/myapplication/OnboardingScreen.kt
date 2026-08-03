@@ -16,7 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
+import androidx.compose.foundation.clickable
 private data class OnboardingPage(
     val symbol: String,
     val title: String,
@@ -65,9 +65,19 @@ fun OnboardingScreen(
                 text = if (currentPage < pages.lastIndex) "Atla" else "",
                 modifier = Modifier
                     .align(Alignment.End)
-                    .padding(top = 8.dp),
+                    .padding(top = 8.dp)
+                    .clickable(
+                        enabled = currentPage < pages.lastIndex
+                    ) {
+                        onFinish()
+                    }
+                    .padding(
+                        horizontal = 8.dp,
+                        vertical = 6.dp
+                    ),
                 fontSize = 14.sp,
-                color = Color(0xFF7890A2)
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFF1D6679)
             )
 
             Spacer(modifier = Modifier.weight(1f))

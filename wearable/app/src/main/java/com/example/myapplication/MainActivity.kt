@@ -107,11 +107,24 @@ class MainActivity : ComponentActivity() {
 
                     "home" -> {
                         HomeScreen(
+                            adimSayisi = stepCountState.value,
+                            ortalamaNabiz = avgHeartRateState.value,
+                            sonNabiz = latestHeartRateState.value,
+                            uykuSuresi = sleepDurationState.value,
+                            tahminiUyku = tahminiUykuState.value,
+                            egzersizOzeti = exerciseSummaryState.value,
+
                             onOpenCrisis = {
                                 currentScreen = "crisis"
                             },
                             onNavigate = { destination ->
                                 currentScreen = destination
+                            },
+                            onOpenProfile = {
+                                currentScreen = "profile"
+                            },
+                            onOpenNotifications = {
+                                currentScreen = "notifications"
                             }
                         )
                     }
@@ -142,6 +155,22 @@ class MainActivity : ComponentActivity() {
 
                     "market" -> {
                         MarketScreen(
+                            onBack = {
+                                currentScreen = "home"
+                            }
+                        )
+                    }
+
+                    "profile" -> {
+                        ProfileScreen(
+                            onBack = {
+                                currentScreen = "home"
+                            }
+                        )
+                    }
+
+                    "notifications" -> {
+                        NotificationsScreen(
                             onBack = {
                                 currentScreen = "home"
                             }

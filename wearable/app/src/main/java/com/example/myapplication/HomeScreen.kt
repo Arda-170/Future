@@ -20,17 +20,20 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.*
 import androidx.compose.ui.Alignment
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.clip
 private val ScreenBackground = Color(0xFFF1F7F9)
 private val DarkText = Color(0xFF14263D)
 private val SecondaryText = Color(0xFF7890A2)
@@ -41,10 +44,15 @@ private val SoftGreen = Color(0xFFD4F3DF)
 fun HomeScreen(
     adimSayisi: Long? = null,
     ortalamaNabiz: Long? = null,
+    sonNabiz: Long? = null,
     uykuSuresi: String? = null,
     tahminiUyku: String? = null,
+    egzersizOzeti: String? = null,
     onOpenCrisis: () -> Unit = {},
-    onNavigate: (String) -> Unit = {}
+    onNavigate: (String) -> Unit = {},
+    onOpenProfile: () -> Unit = {},
+    onOpenNotifications: () -> Unit = {}
+
 ) {
     Scaffold(
         containerColor = ScreenBackground,
@@ -68,15 +76,33 @@ fun HomeScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
-                DashboardHeader()
+                DashboardHeader(
+                    onOpenProfile = onOpenProfile,
+                    onOpenNotifications = onOpenNotifications
+                )
             }
 
             item {
-                DailyStatusCard()
+                DailyStatusCard(
+                    sleepDuration = if (
+                        uykuSuresi == null || uykuSuresi == "Veri yok"
+                    ) {
+                        tahminiUyku
+                    } else {
+                        uykuSuresi
+                    }
+                )
             }
 
             item {
-                HealthDataCards()
+                HealthDataCards(
+                    heartRate = sonNabiz ?: ortalamaNabiz,
+                    stepCount = adimSayisi
+                )
+            }
+
+            item {
+                WeeklyStreakCard()
             }
 
             item {
@@ -84,35 +110,123 @@ fun HomeScreen(
             }
 
             item {
-                SupportRequestButton()
+                WaterTrackerCard()
             }
 
             item {
-                WaterTrackerCard()
+                SupportRequestButton(
+                    onClick = onOpenCrisis
+                )
             }
 
             item {
                 QuickActions()
             }
+
+            item {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(18.dp),
+                    color = Color.White
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Text(
+                            text = "Bugünkü Egzersiz",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = DarkText
+                        )
+
+                        Text(
+                            text = egzersizOzeti ?: "Veri bulunamadı",
+                            modifier = Modifier.padding(top = 6.dp),
+                            fontSize = 13.sp,
+                            color = SecondaryText
+                        )
+                    }
+                }
+            }
+
         }
     }
 }
 
 @Composable
-private fun DashboardHeader() {
+private fun DashboardHeader(
+    onOpenProfile: () -> Unit,
+    onOpenNotifications: () -> Unit
+) {
     Column {
-        Text(
-            text = "İyi günler",
-            fontSize = 20.sp,
-            color = SecondaryText
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.Top,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = "İyi günler!",
+                    fontSize = 20.sp,
+                    color = SecondaryText
+                )
 
-        Text(
-            text = "Büşra Su",
-            fontSize = 30.sp,
-            fontWeight = FontWeight.Bold,
-            color = DarkText
-        )
+                Text(
+                    text = "Büşra Su",
+                    fontSize = 30.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = DarkText
+                )
+            }
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Surface(
+                    modifier = Modifier
+                        .size(46.dp)
+                        .clickable {
+                            onOpenNotifications()
+                        },
+                    shape = CircleShape,
+                    color = Color.White,
+                    shadowElevation = 2.dp
+                ) {
+                    Box(
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "🔔",
+                            fontSize = 21.sp
+                        )
+                    }
+                }
+
+                Surface(
+                    modifier = Modifier
+                        .size(46.dp)
+                        .clickable {
+                            onOpenProfile()
+                        },
+                    shape = CircleShape,
+                    color = MainTeal,
+                    shadowElevation = 2.dp
+                ) {
+                    Box(
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "B",
+                            fontSize = 19.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
+                }
+            }
+        }
 
         Surface(
             modifier = Modifier.padding(top = 10.dp),
@@ -133,7 +247,9 @@ private fun DashboardHeader() {
 }
 
 @Composable
-private fun DailyStatusCard() {
+private fun DailyStatusCard(
+    sleepDuration: String?
+) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
@@ -164,7 +280,7 @@ private fun DailyStatusCard() {
             )
 
             Text(
-                text = "Ruh hali: Sakin   •   Uyku: 7,2 saat   •   İstek: Düşük",
+                text = "Ruh hali: Sakin  •  Uyku: ${sleepDuration ?: "Veri yok"}  •  İstek: Düşük",
                 modifier = Modifier.padding(top = 20.dp),
                 fontSize = 13.sp,
                 color = Color.White
@@ -173,7 +289,10 @@ private fun DailyStatusCard() {
     }
 }
 @Composable
-private fun HealthDataCards() {
+private fun HealthDataCards(
+    heartRate: Long?,
+    stepCount: Long?
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -181,9 +300,13 @@ private fun HealthDataCards() {
         HealthCard(
             modifier = Modifier.weight(1f),
             title = "NABIZ",
-            value = "72",
+            value = heartRate?.toString() ?: "--",
             unit = "bpm",
-            description = "Dinlenme · Normal",
+            description = if (heartRate == null) {
+                "Veri bulunamadı"
+            } else {
+                "Son ölçülen değer"
+            },
             symbol = "♥",
             backgroundColor = Color(0xFFFFE2DA),
             accentColor = Color(0xFFDE725B)
@@ -192,14 +315,22 @@ private fun HealthDataCards() {
         HealthCard(
             modifier = Modifier.weight(1f),
             title = "ADIM",
-            value = "6.241",
+            value = stepCount?.let { formatNumber(it) } ?: "--",
             unit = "adım",
-            description = "Günlük hedefin %83'ü",
+            description = if (stepCount == null) {
+                "Veri bulunamadı"
+            } else {
+                "Bugünkü toplam"
+            },
             symbol = "⌁",
             backgroundColor = Color(0xFFD6EFF6),
             accentColor = Color(0xFF287B98)
         )
     }
+}
+
+private fun formatNumber(value: Long): String {
+    return "%,d".format(value).replace(',', '.')
 }
 
 @Composable
@@ -308,15 +439,21 @@ private fun WaterTrackerCard() {
                 )
             }
 
-            LinearProgressIndicator(
-                progress = { 0.75f },
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 14.dp)
-                    .height(8.dp),
-                color = Color(0xFF3C9FC0),
-                trackColor = Color(0xFFD9EBEF)
-            )
+                    .height(8.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(Color(0xFFD9EBEF))
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .fillMaxWidth(0.75f)
+                        .background(Color(0xFF3C9FC0))
+                )
+            }
 
             Row(
                 modifier = Modifier
@@ -369,26 +506,33 @@ private fun RecoveryJourneyCard() {
                 )
 
                 Text(
-                    text = "47. Gün",
+                    text = "🌱 47. Gün",
                     fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
                     color = Color(0xFF2FA866)
                 )
             }
 
-            LinearProgressIndicator(
-                progress = { 0.52f },
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 14.dp)
-                    .height(8.dp),
-                color = Color(0xFF35AD6D),
-                trackColor = Color(0xFFD9EBEF)
-            )
+                    .padding(top = 16.dp)
+                    .height(10.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(Color(0xFFD9EBEF))
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .fillMaxWidth(0.52f)
+                        .background(Color(0xFF35AD6D))
+                )
+            }
 
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 8.dp),
+                    .padding(top = 10.dp),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
@@ -403,128 +547,131 @@ private fun RecoveryJourneyCard() {
                     color = SecondaryText
                 )
             }
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                repeat(20) { index ->
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(8.dp)
-                            .background(
-                                color = if (index < 11) {
-                                    Color(0xFF35AD6D)
-                                } else {
-                                    Color(0xFFD9EBEF)
-                                },
-                                shape = RoundedCornerShape(50)
-                            )
-                    )
-                }
-            }
         }
     }
 }
 
 @Composable
-private fun SupportRequestButton() {
+private fun SupportRequestButton(
+    onClick: () -> Unit
+) {
+    val infiniteTransition = rememberInfiniteTransition(
+        label = "supportButtonAnimation"
+    )
+
+    val scale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.025f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1000),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "supportButtonScale"
+    )
+
     Button(
-        onClick = { },
+        onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
-            .height(64.dp),
+            .height(66.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            },
         shape = RoundedCornerShape(18.dp),
         colors = ButtonDefaults.buttonColors(
-            containerColor = Color(0xFFD96849),
-            contentColor = Color.White
-        ),
-        contentPadding = PaddingValues(horizontal = 20.dp)
+            containerColor = Color(0xFFD96849)
+        )
     ) {
         Text(
-            text = "ⓘ",
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold
+            text = "!",
+            fontSize = 25.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.White
         )
 
         Spacer(modifier = Modifier.width(10.dp))
 
-        Text(
-            text = "Desteğe İhtiyacım Var",
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold
-        )
-    }
-}
-@Composable
-private fun QuickActions() {
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(14.dp)
-    ) {
-
-        QuickActionCard(
-            modifier = Modifier.weight(1f),
-            emoji = "🧘",
-            title = "Nefes Egzersizi"
-        )
-
-        QuickActionCard(
-            modifier = Modifier.weight(1f),
-            emoji = "📞",
-            title = "Yakınını Ara"
-        )
-    }
-}
-@Composable
-private fun QuickActionCard(
-    modifier: Modifier = Modifier,
-    emoji: String,
-    title: String
-) {
-
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(18.dp),
-        color = Color.White,
-        shadowElevation = 2.dp
-    ) {
-
-        Column(
-            modifier = Modifier
-                .padding(vertical = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-
+        Column {
             Text(
-                text = emoji,
-                fontSize = 36.sp
+                text = "Desteğe İhtiyacım Var",
+                fontSize = 17.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
             )
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            Text(
-                text = title,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = DarkText
-            )
-
         }
-
     }
 }
+@Composable
+private fun QuickActions(
+    onStartBreathing: () -> Unit = {}
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable {
+                onStartBreathing()
+            },
+        shape = RoundedCornerShape(20.dp),
+        color = Color.White,
+        shadowElevation = 3.dp
+    ) {
+        Row(
+            modifier = Modifier.padding(
+                horizontal = 20.dp,
+                vertical = 22.dp
+            ),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                modifier = Modifier.size(62.dp),
+                shape = CircleShape,
+                color = Color(0xFFD8F0F2)
+            ) {
+                Box(
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "🧘",
+                        fontSize = 32.sp
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = "Nefes Egzersizi",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = DarkText
+                )
+
+                Text(
+                    text = "Kısa bir egzersizle nefesini yavaşlat ve sakinleş.",
+                    modifier = Modifier.padding(top = 5.dp),
+                    fontSize = 12.sp,
+                    lineHeight = 19.sp,
+                    color = SecondaryText
+                )
+            }
+
+            Text(
+                text = "›",
+                fontSize = 30.sp,
+                color = SecondaryText
+            )
+        }
+    }
+}
+
 @Composable
 private fun DashboardBottomBar(
     onNavigate: (String) -> Unit
 ) {
-    var selectedItem by remember {
-        mutableIntStateOf(0)
-    }
 
     val navigationItems = listOf(
         BottomNavigationItem(
@@ -553,15 +700,10 @@ private fun DashboardBottomBar(
         containerColor = Color.White
     ) {
 
-        var selectedItem by remember {
-            mutableIntStateOf(0)
-        }
-
-        navigationItems.forEachIndexed { index, item ->
+        navigationItems.forEach { item ->
             NavigationBarItem(
-                selected = selectedItem == index,
+                selected = item.route == "home",
                 onClick = {
-                    selectedItem = index
                     onNavigate(item.route)
                 },
                 icon = {
@@ -586,3 +728,95 @@ private data class BottomNavigationItem(
     val route: String
 )
 
+@Composable
+private fun WeeklyStreakCard() {
+    val completedDays = 5
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        color = Color.White,
+        shadowElevation = 2.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column {
+                    Text(
+                        text = "🔥 Haftalık Seri",
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = DarkText
+                    )
+
+                    Text(
+                        text = "Hedefine ulaşmana 2 gün kaldı.",
+                        modifier = Modifier.padding(top = 4.dp),
+                        fontSize = 13.sp,
+                        color = SecondaryText
+                    )
+                }
+
+                Text(
+                    text = "$completedDays / 7",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFFD96849)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                val days = listOf("P", "S", "Ç", "P", "C", "C", "P")
+
+                days.forEachIndexed { index, day ->
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Surface(
+                            modifier = Modifier.size(34.dp),
+                            shape = CircleShape,
+                            color = if (index < completedDays) {
+                                Color(0xFFD96849)
+                            } else {
+                                Color(0xFFE2EAEC)
+                            }
+                        ) {
+                            Box(
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = if (index < completedDays) "✓" else day,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (index < completedDays) {
+                                        Color.White
+                                    } else {
+                                        SecondaryText
+                                    }
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(5.dp))
+
+                        Text(
+                            text = day,
+                            fontSize = 10.sp,
+                            color = SecondaryText
+                        )
+                    }
+                }
+            }
+        }
+    }
+}

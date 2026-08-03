@@ -19,7 +19,6 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun CrisisScreen(
     onBack: () -> Unit = {},
-    onStartBreathing: () -> Unit = {},
     onCallRelative: () -> Unit = {},
     onCallAuthority: () -> Unit = {}
 ) {
@@ -69,24 +68,6 @@ fun CrisisScreen(
             )
 
             Spacer(modifier = Modifier.height(40.dp))
-
-            // Nefes Egzersizi
-            OutlinedButton(
-                onClick = onStartBreathing,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(64.dp),
-                shape = RoundedCornerShape(18.dp)
-            ) {
-                Text(
-                    text = "🧘  Nefes Egzersizi",
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MainBlue
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
 
             // Yakınımı Ara
             OutlinedButton(
