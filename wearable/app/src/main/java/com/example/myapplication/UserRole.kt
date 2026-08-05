@@ -1,10 +1,8 @@
 package com.example.myapplication
 
-enum class UserRole(
-    val title: String
-) {
-    PATIENT("Hasta"),
+enum class UserRole(val displayName: String) {
+    ADMIN("Admin"),
     DOCTOR("Doktor"),
-    RELATIVE("Hasta Yakını"),
-    ADMIN("Admin")
+    PATIENT("Hasta"),
+    RELATIVE("Hasta Yakını") 
 }

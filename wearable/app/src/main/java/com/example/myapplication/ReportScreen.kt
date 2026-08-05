@@ -65,7 +65,7 @@ fun ReportScreen(
             )
 
             Text(
-                text = "Son 7 günlük genel görünüm",
+                text = "Bugünkü genel görünüm",
                 modifier = Modifier.padding(top = 6.dp),
                 fontSize = 15.sp,
                 color = ReportSecondaryText
@@ -111,6 +111,22 @@ fun ReportScreen(
                 color = ReportSecondaryText
             )
 
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp),
+                color = Color(0xFFEFF6F7)
+            ) {
+                Text(
+                    text = "Saatlik nabız grafiği ve haftalık aktivite geçmişi için geçmiş veri toplanması gerekiyor — bu özellik yakında eklenecek.",
+                    modifier = Modifier.padding(14.dp),
+                    fontSize = 12.sp,
+                    lineHeight = 18.sp,
+                    color = ReportSecondaryText
+                )
+            }
+
             Spacer(modifier = Modifier.height(24.dp))
         }
     }
@@ -142,6 +158,7 @@ private fun ReportSummaryCards(
         )
     }
 }
+
 private fun formatReportNumber(value: Long): String {
     return "%,d".format(value).replace(',', '.')
 }
@@ -487,7 +504,6 @@ private fun HeartRateLineChart(
         val graphWidth = graphRight - graphLeft
         val graphHeight = graphBottom - graphTop
 
-        // Arka plandaki yatay yardımcı çizgiler
         repeat(4) { index ->
             val y = graphTop + (graphHeight / 3f) * index
 

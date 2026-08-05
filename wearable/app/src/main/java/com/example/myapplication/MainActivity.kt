@@ -39,8 +39,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+
 import java.time.format.DateTimeFormatter
 import androidx.compose.runtime.mutableIntStateOf
+import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.auth.providers.builtin.Email
 data class HeartRatePoint(
     val timeLabel: String,
     val bpm: Float
@@ -93,8 +97,33 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        Log.d("TEST", "onCreate çalıştı")
+
+        checkHealthConnectDurumu()
+
         val sharedPreferences =
             getSharedPreferences("UserData", MODE_PRIVATE)
+
+        lifecycleScope.launch {
+            try {
+                if (supabase.auth.currentUserOrNull() == null) {
+                    supabase.auth.signInWith(Email) {
+                        email = "omersahin68n@gmail.com"
+                        password = "Kk.350642"
+                    }
+                    Log.d("Supabase", "Giriş yapıldı: ${supabase.auth.currentUserOrNull()?.id}")
+                } else {
+                    Log.d("Supabase", "Zaten giriş yapılmış: ${supabase.auth.currentUserOrNull()?.id}")
+                }
+
+                // Sağlık verisi rızası — health_samples insert'i için RLS bunu şart koşuyor
+                rizaKaydiEkle()
+
+            } catch (e: Exception) {
+                Log.e("Supabase", "Giriş hatası: ${e.message}")
+            }
+        }
+
 
         setContent {
             MaterialTheme {
@@ -378,6 +407,7 @@ class MainActivity : ComponentActivity() {
                                 currentScreen = destination
                             }
                         )
+
                     }
 
                     "tasks" -> {
@@ -575,29 +605,103 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+    // --- KVKK RIZA KAYDI (health_samples RLS için gerekli) ---
+    private suspend fun rizaKaydiEkle() {
+        try {
+            supabase.from("consents").insert(
+                mapOf("kind" to "health_data", "text_version" to "saglik-verisi-v1.0")
+            )
+            Log.d("Supabase", "Rıza kaydı eklendi")
+        } catch (e: Exception) {
+            // Zaten eklenmişse hata normal, tekrar tekrar eklemeye çalışmıyoruz diye
+            Log.d("Supabase", "Rıza kaydı zaten var veya hata: ${e.message}")
+        }
+    }
+    private fun sunucuyaGonder() {
+        lifecycleScope.launch {
+            try {
+                val simdi = Instant.now()
+                val samples = mutableListOf<HealthSample>()
 
+                // Adım sayısı
+                stepCountState.value?.let { adim ->
+                    samples.add(
+                        buildHealthSample(
+                            metric = "steps",
+                            value = adim.toDouble(),
+                            startTime = bugununBaslangici(),
+                            endTime = simdi,
+                            unit = "count"
+                        )
+                    )
+                }
+
+                // Ortalama nabız
+                avgHeartRateState.value?.let { nabiz ->
+                    samples.add(
+                        buildHealthSample(
+                            metric = "heart_rate",
+                            value = nabiz.toDouble(),
+                            startTime = bugununBaslangici(),
+                            endTime = simdi,
+                            unit = "bpm"
+                        )
+                    )
+                }
+
+                if (samples.isEmpty()) {
+                    Log.d("Supabase", "Gönderilecek veri yok")
+                    return@launch
+                }
+
+                supabase.from("health_samples").upsert(samples) {
+                    onConflict = "user_id,client_uid"
+                    ignoreDuplicates = true
+                }
+
+                Log.d("Supabase", "${samples.size} kayıt gönderildi")
+
+            } catch (e: Exception) {
+                Log.e("Supabase", "Gönderim hatası: ${e.message}")
+            }
+        }
+    }
     private fun checkHealthConnectDurumu() {
+        Log.d("TEST", "checkHealthConnectDurumu çağrıldı")
+
         val status = HealthConnectClient.getSdkStatus(this)
+
+        Log.d("TEST", "SDK Status = $status")
 
         when (status) {
             HealthConnectClient.SDK_UNAVAILABLE -> {
-                statusMessage.value = "Bu cihaz Health Connect'i desteklemiyor"
+                Log.d("TEST", "SDK_UNAVAILABLE")
             }
+
             HealthConnectClient.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED -> {
-                statusMessage.value = "Health Connect güncellemesi/kurulumu gerekiyor"
+                Log.d("TEST", "SDK_UPDATE_REQUIRED")
             }
+
             HealthConnectClient.SDK_AVAILABLE -> {
+                Log.d("TEST", "SDK_AVAILABLE")
                 checkAndRequestPermissions()
             }
         }
     }
 
     private fun checkAndRequestPermissions() {
+        Log.d("TEST", "checkAndRequestPermissions")
+
         lifecycleScope.launch {
             val granted = healthConnectClient.permissionController.getGrantedPermissions()
+
+            Log.d("TEST", "Granted: $granted")
+
             if (granted.containsAll(permissions)) {
+                Log.d("TEST", "İzinler tamam")
                 tumVerileriCek()
             } else {
+                Log.d("TEST", "İzin eksik")
                 requestPermissionLauncher.launch(permissions)
             }
         }
@@ -605,14 +709,25 @@ class MainActivity : ComponentActivity() {
 
     // Tüm verileri sırayla çeken ana fonksiyon
     private fun tumVerileriCek() {
+        // --- TÜM VERİLERİ SUPABASE'E GÖNDER ---
+        Log.d("TEST", "tumVerileriCek başladı")
+
         lifecycleScope.launch {
             statusMessage.value = "Veriler çekiliyor..."
 
+            Log.d("TEST", "1 - kaynaklariGoster çağrılacak")
+
             kaynaklariGoster()
 
+            Log.d("TEST", "2 - kaynaklariGoster bitti")
+
+            Log.d("TEST", "3 - readTodaySteps çağrılıyor")
+
             val adimSayisi = readTodaySteps()
+
+            Log.d("TEST", "4 - readTodaySteps bitti: $adimSayisi")
+
             stepCountState.value = adimSayisi
-            Log.d("HealthConnect", "Bugünkü adım sayısı: $adimSayisi")
 
             val heartRateResult = readTodayHeartRate()
 
@@ -652,7 +767,9 @@ class MainActivity : ComponentActivity() {
             }
 
             statusMessage.value = "Son güncelleme: şimdi"
+            sunucuyaGonder()
         }
+
     }
 
     // --- BUGÜNÜN BAŞLANGICI (telefonun saat dilimine göre) ---
@@ -736,6 +853,7 @@ class MainActivity : ComponentActivity() {
 
     // --- UYKU (son 24 saat) ---
     private suspend fun readLastNightSleep(): String {
+
         val now = Instant.now()
         val yesterday = now.minus(Duration.ofHours(24))
 
@@ -745,6 +863,20 @@ class MainActivity : ComponentActivity() {
                 timeRangeFilter = TimeRangeFilter.between(yesterday, now)
             )
         )
+        Log.d("HealthConnect", "Sleep sorgu aralığı (24 saat): $yesterday - $now, bulunan kayıt sayısı: ${response.records.size}")
+
+        // TEŞHİS: son 7 güne genişletilmiş sorgu
+        val genisAralikBaslangic = now.minus(Duration.ofDays(7))
+        val genisResponse = healthConnectClient.readRecords(
+            ReadRecordsRequest(
+                recordType = SleepSessionRecord::class,
+                timeRangeFilter = TimeRangeFilter.between(genisAralikBaslangic, now)
+            )
+        )
+        Log.d("HealthConnect", "Sleep sorgu aralığı (7 gün): bulunan kayıt sayısı: ${genisResponse.records.size}")
+        for (record in genisResponse.records) {
+            Log.d("HealthConnect", "Kayıt: ${record.startTime} - ${record.endTime}")
+        }
 
         if (response.records.isEmpty()) return "Veri yok"
 
@@ -835,7 +967,7 @@ class MainActivity : ComponentActivity() {
         val zoneId = ZoneId.systemDefault()
 
         val today = LocalDate.now(zoneId)
-        val startTime = today.minusDays(1).atTime(18, 0).atZone(zoneId).toInstant().toEpochMilli()
+        val startTime = today.minusDays(1).atTime(21, 0).atZone(zoneId).toInstant().toEpochMilli()
         val endTime = today.atTime(12, 0).atZone(zoneId).toInstant().toEpochMilli()
 
         val events = usageStatsManager.queryEvents(startTime, endTime)
