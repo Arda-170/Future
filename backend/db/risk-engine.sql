@@ -139,7 +139,46 @@ declare
 
   -- Yeterli veri eşiği (kararlaştırıldı: en az 7 gün)
   c_min_days constant int := 7;
+
+  -- ---------------------------------------------------------------------
+  -- YENİ: Mutlak Güvenlik Eşiği (Absolute Safety-Net)
+  -- Kaynak: Clinical Opiate Withdrawal Scale (COWS) — dinlenik haldeki
+  -- nabız, kişiye özel karşılaştırma gerektirmeyen objektif bir kriz
+  -- göstergesidir (120 bpm üzeri = şiddetli). Bu katman, 7 günlük
+  -- baseline şartını beklemeden çalışır; ilk hafta içindeki gerçek bir
+  -- krizin "insufficient_data" ile sessiz geçilmesini engeller.
+  -- ---------------------------------------------------------------------
+  c_abs_hr_severe  constant numeric := 120;
+  c_max_steps_rest constant int     := 150;  -- "hareketsiz" sayılma sınırı
 begin
+  -- Günün özetini baseline şartından önce çek
+  select * into t from public.daily_aggregates
+  where user_id = p_user and day = p_day;
+
+  if t.resting_hr is not null
+     and coalesce(t.step_count, 0) < c_max_steps_rest
+     and t.resting_hr >= c_abs_hr_severe then
+
+    v_factors := v_factors || jsonb_build_object('abs_hr_safety_net', jsonb_build_object(
+      'value', t.resting_hr,
+      'threshold', c_abs_hr_severe,
+      'label', 'Dinlenme nabzı klinik olarak şiddetli kriz eşiğinin üzerinde (COWS referansı)',
+      'note', 'Kişisel baseline''dan bağımsız mutlak eşik'
+    ));
+
+    insert into public.risk_scores (user_id, for_day, score, level, factors, model_version)
+    values (p_user, p_day, 100, 'high', v_factors, 'abs-safety-net-v1');
+
+    return jsonb_build_object(
+      'status', 'ok',
+      'score', 100,
+      'level', 'high',
+      'factors', v_factors,
+      'baseline_days', coalesce((select n_days from public.get_baseline(p_user, p_day)), 0),
+      'triggered_by', 'absolute_threshold'
+    );
+  end if;
+
   select * into b from public.get_baseline(p_user, p_day);
 
   if b.n_days is null or b.n_days < c_min_days then
@@ -149,9 +188,6 @@ begin
       'days_required', c_min_days
     );
   end if;
-
-  select * into t from public.daily_aggregates
-  where user_id = p_user and day = p_day;
 
   if t is null then
     return jsonb_build_object('status', 'no_data_for_day');
