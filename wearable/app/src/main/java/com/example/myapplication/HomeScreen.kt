@@ -40,20 +40,26 @@ private val SecondaryText = Color(0xFF7890A2)
 private val MainTeal = Color(0xFF1D6679)
 private val SoftGreen = Color(0xFFD4F3DF)
 
+
 @Composable
 fun HomeScreen(
+    userName: String,
     adimSayisi: Long? = null,
     ortalamaNabiz: Long? = null,
     sonNabiz: Long? = null,
     uykuSuresi: String? = null,
     tahminiUyku: String? = null,
-    egzersizOzeti: String? = null,
     onOpenCrisis: () -> Unit = {},
     onNavigate: (String) -> Unit = {},
     onOpenProfile: () -> Unit = {},
     onOpenNotifications: () -> Unit = {}
 
 ) {
+    val displayName = userName
+        .trim()
+        .substringBefore(" ")
+        .ifBlank { "Kullanıcı" }
+
     Scaffold(
         containerColor = ScreenBackground,
         bottomBar = {
@@ -77,6 +83,7 @@ fun HomeScreen(
         ) {
             item {
                 DashboardHeader(
+                    displayName = displayName,
                     onOpenProfile = onOpenProfile,
                     onOpenNotifications = onOpenNotifications
                 )
@@ -122,39 +129,13 @@ fun HomeScreen(
             item {
                 QuickActions()
             }
-
-            item {
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(18.dp),
-                    color = Color.White
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp)
-                    ) {
-                        Text(
-                            text = "Bugünkü Egzersiz",
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = DarkText
-                        )
-
-                        Text(
-                            text = egzersizOzeti ?: "Veri bulunamadı",
-                            modifier = Modifier.padding(top = 6.dp),
-                            fontSize = 13.sp,
-                            color = SecondaryText
-                        )
-                    }
-                }
-            }
-
         }
     }
 }
 
 @Composable
 private fun DashboardHeader(
+    displayName: String,
     onOpenProfile: () -> Unit,
     onOpenNotifications: () -> Unit
 ) {
@@ -174,7 +155,7 @@ private fun DashboardHeader(
                 )
 
                 Text(
-                    text = "Büşra Su",
+                    text = displayName,
                     fontSize = 30.sp,
                     fontWeight = FontWeight.Bold,
                     color = DarkText
@@ -218,7 +199,7 @@ private fun DashboardHeader(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "B",
+                            text = displayName.first().uppercase(),
                             fontSize = 19.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White

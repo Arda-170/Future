@@ -15,7 +15,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
+import androidx.compose.foundation.clickable
 private data class NotificationItem(
     val symbol: String,
     val title: String,
@@ -23,37 +23,51 @@ private data class NotificationItem(
     val time: String,
     val unread: Boolean
 )
-
 @Composable
 fun NotificationsScreen(
+    hasUnreadNotifications: Boolean,
     onBack: () -> Unit = {}
 ) {
     val notifications = listOf(
         NotificationItem(
             symbol = "✓",
-            title = "Görev tamamlandı",
-            description = "Uyku hedefini tamamladın ve 10 puan kazandın.",
+            title = "Günlük hedef tamamlandı",
+            description = "Bugünkü uyku hedefini tamamladın. Hesabına 10 puan eklendi.",
             time = "10 dk önce",
-            unread = true
+            unread = hasUnreadNotifications
         ),
         NotificationItem(
             symbol = "🔥",
             title = "Serin devam ediyor",
-            description = "7 günlük hedefin için yalnızca 2 gün kaldı.",
+            description = "Bu haftaki hedefin için 2 günün kaldı. Küçük adımlarla devam ediyorsun.",
             time = "1 saat önce",
-            unread = true
+            unread = hasUnreadNotifications
         ),
         NotificationItem(
             symbol = "💧",
-            title = "Su hatırlatıcısı",
-            description = "Günlük su hedefinin 2 bardak gerisindesin.",
+            title = "Su hedefini hatırla",
+            description = "Günlük su hedefinin 2 bardak gerisindesin. Uygun olduğunda bir bardak su içebilirsin.",
             time = "2 saat önce",
             unread = false
         ),
         NotificationItem(
+            symbol = "👣",
+            title = "Adım hedefine yaklaştın",
+            description = "Bugünkü adım hedefinin %75’ini tamamladın. Biraz daha hareket ederek hedefe ulaşabilirsin.",
+            time = "3 saat önce",
+            unread = false
+        ),
+        NotificationItem(
+            symbol = "🫁",
+            title = "Kısa bir mola iyi gelebilir",
+            description = "Bir dakikalık nefes egzersiziyle kendine kısa bir alan açabilirsin.",
+            time = "Bugün",
+            unread = false
+        ),
+        NotificationItem(
             symbol = "🎁",
-            title = "Yeni ödül",
-            description = "Markette yeni bir sinema bileti ödülü açıldı.",
+            title = "Yeni ödül erişilebilir",
+            description = "Puan bakiyenle Market’teki bazı ödülleri açabilirsin.",
             time = "Dün",
             unread = false
         )
@@ -85,7 +99,11 @@ fun NotificationsScreen(
             )
 
             Text(
-                text = "Görevlerin, sağlık hedeflerin ve ödüllerin.",
+                text = if (hasUnreadNotifications) {
+                    "Yeni bildirimlerin var."
+                } else {
+                    "Tüm bildirimlerini görüntüledin."
+                },
                 modifier = Modifier.padding(top = 6.dp),
                 fontSize = 14.sp,
                 color = Color(0xFF7890A2)
@@ -94,7 +112,10 @@ fun NotificationsScreen(
             Spacer(modifier = Modifier.height(20.dp))
 
             notifications.forEach { notification ->
-                NotificationCard(notification)
+                NotificationCard(
+                    notification = notification
+                )
+
                 Spacer(modifier = Modifier.height(11.dp))
             }
         }
@@ -106,7 +127,10 @@ private fun NotificationCard(
     notification: NotificationItem
 ) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable {
+            },
         shape = RoundedCornerShape(18.dp),
         color = if (notification.unread) {
             Color(0xFFE4F5F6)

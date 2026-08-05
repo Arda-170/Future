@@ -38,12 +38,10 @@ private data class MarketReward(
 
 @Composable
 fun MarketScreen(
+    userPoints: Int,
+    onRewardPurchased: (Int, String) -> Unit,
     onBack: () -> Unit = {}
 ) {
-    var userPoints by remember {
-        mutableIntStateOf(1250)
-    }
-
     var selectedCategory by remember {
         mutableStateOf("Tümü")
     }
@@ -67,7 +65,7 @@ fun MarketScreen(
             title = "Kahve Kuponu",
             description = "Anlaşmalı kafelerde geçerli bir orta boy kahve kuponu.",
             category = "Yeme İçme",
-            points = 400,
+            points = 30,
             backgroundColor = Color(0xFFFFE8D8)
         ),
         MarketReward(
@@ -240,12 +238,13 @@ fun MarketScreen(
                             userPoints = userPoints,
                             onBuy = {
                                 if (userPoints >= reward.points) {
-                                    userPoints -= reward.points
-                                    message =
-                                        "${reward.title} başarıyla açıldı."
+                                    onRewardPurchased(
+                                        reward.points,
+                                        reward.title
+                                    )
+                                    message = "${reward.title} başarıyla açıldı."
                                 } else {
-                                    message =
-                                        "Bu ödül için yeterli puanın bulunmuyor."
+                                    message = "Bu ödül için yeterli puanın bulunmuyor."
                                 }
                             }
                         )

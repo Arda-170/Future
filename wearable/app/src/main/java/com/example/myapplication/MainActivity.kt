@@ -39,6 +39,20 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import java.time.format.DateTimeFormatter
+import androidx.compose.runtime.mutableIntStateOf
+data class HeartRatePoint(
+    val timeLabel: String,
+    val bpm: Float
+)
+
+data class HeartRateResult(
+    val average: Long?,
+    val latest: Long?,
+    val points: List<HeartRatePoint>
+)
+
+
 class MainActivity : ComponentActivity() {
 
     private val healthConnectClient by lazy {
@@ -56,6 +70,8 @@ class MainActivity : ComponentActivity() {
     private var stepCountState = mutableStateOf<Long?>(null)
     private var avgHeartRateState = mutableStateOf<Long?>(null)
     private var latestHeartRateState = mutableStateOf<Long?>(null)
+    private var heartRatePointsState =
+        mutableStateOf<List<HeartRatePoint>>(emptyList())
     private var sleepDurationState = mutableStateOf<String?>(null)
     private var exerciseSummaryState = mutableStateOf<String?>(null)
     private var statusMessage = mutableStateOf("Henüz veri çekilmedi")
@@ -77,18 +93,145 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        val sharedPreferences =
+            getSharedPreferences("UserData", MODE_PRIVATE)
+
         setContent {
             MaterialTheme {
+                val appPreferences = remember {
+                    getSharedPreferences(
+                        "app_preferences",
+                        MODE_PRIVATE
+                    )
+                }
+
+                val onboardingCompleted = appPreferences.getBoolean(
+                    "onboarding_completed",
+                    false
+                )
+
+                val kvkkAccepted = appPreferences.getBoolean(
+                    "kvkk_accepted",
+                    false
+                )
+
+                var currentUserName by remember {
+                    mutableStateOf(
+                        sharedPreferences.getString(
+                            "user_name",
+                            ""
+                        ) ?: ""
+                    )
+                }
+
+                var currentUserEmail by remember {
+                    mutableStateOf(
+                        sharedPreferences.getString(
+                            "user_email",
+                            ""
+                        ) ?: ""
+                    )
+                }
 
                 var currentScreen by remember {
-                    mutableStateOf("onboarding")
+                    mutableStateOf(
+                        if (!onboardingCompleted) {
+                            "onboarding"
+                        } else if (!kvkkAccepted) {
+                            "consent"
+                        } else {
+                            "login"
+                        }
+                    )
+                }
+
+                var userPoints by remember {
+                    mutableIntStateOf(
+                        sharedPreferences.getInt(
+                            "user_points",
+                            15
+                        )
+                    )
+                }
+
+                var completedTaskCount by remember {
+                    mutableIntStateOf(
+                        sharedPreferences.getInt(
+                            "completed_task_count",
+                            2
+                        )
+                    )
+                }
+
+                var purchasedRewards by remember {
+                    mutableStateOf(
+                        sharedPreferences
+                            .getStringSet(
+                                "purchased_rewards",
+                                emptySet()
+                            )
+                            ?.toList()
+                            ?: emptyList()
+                    )
+                }
+
+                val notificationPreferences = remember {
+                    getSharedPreferences(
+                        "notification_preferences",
+                        MODE_PRIVATE
+                    )
+                }
+
+                var hasUnreadNotifications by remember {
+                    mutableStateOf(
+                        notificationPreferences.getBoolean(
+                            "has_unread_notifications",
+                            true
+                        )
+                    )
                 }
 
                 when (currentScreen) {
+                    "register" -> {
+                        RegisterScreen(
+                            onRegister = { fullName, email ->
+                                currentUserName = fullName
+                                currentUserEmail = email
+
+                                sharedPreferences
+                                    .edit()
+                                    .putString("user_name", fullName)
+                                    .putString("user_email", email)
+                                    .apply()
+
+                                currentScreen = "login"
+                            },
+                            onBack = {
+                                currentScreen = "login"
+                            }
+                        )
+                    }
+
+                    "login" -> {
+                        LoginScreen(
+                            onLogin = { email, _ ->
+                                currentUserEmail = email
+                                currentScreen = "home"
+                            },
+                            onRegister = {
+                                currentScreen = "register"
+                            }
+                        )
+                    }
 
                     "onboarding" -> {
                         OnboardingScreen(
                             onFinish = {
+                                appPreferences
+                                    .edit()
+                                    .putBoolean("onboarding_completed", true)
+                                    .apply()
+
                                 currentScreen = "consent"
                             }
                         )
@@ -100,19 +243,25 @@ class MainActivity : ComponentActivity() {
                                 currentScreen = "onboarding"
                             },
                             onAccept = {
-                                currentScreen = "home"
+                                appPreferences
+                                    .edit()
+                                    .putBoolean("kvkk_accepted", true)
+                                    .apply()
+
+                                checkHealthConnectDurumu()
+                                currentScreen = "login"
                             }
                         )
                     }
 
                     "home" -> {
                         HomeScreen(
+                            userName = currentUserName,
                             adimSayisi = stepCountState.value,
                             ortalamaNabiz = avgHeartRateState.value,
                             sonNabiz = latestHeartRateState.value,
                             uykuSuresi = sleepDurationState.value,
                             tahminiUyku = tahminiUykuState.value,
-                            egzersizOzeti = exerciseSummaryState.value,
 
                             onOpenCrisis = {
                                 currentScreen = "crisis"
@@ -124,6 +273,16 @@ class MainActivity : ComponentActivity() {
                                 currentScreen = "profile"
                             },
                             onOpenNotifications = {
+                                hasUnreadNotifications = false
+
+                                notificationPreferences
+                                    .edit()
+                                    .putBoolean(
+                                        "has_unread_notifications",
+                                        false
+                                    )
+                                    .apply()
+
                                 currentScreen = "notifications"
                             }
                         )
@@ -139,6 +298,12 @@ class MainActivity : ComponentActivity() {
 
                     "report" -> {
                         ReportScreen(
+                            adimSayisi = stepCountState.value,
+                            ortalamaNabiz = avgHeartRateState.value,
+                            sonNabiz = latestHeartRateState.value,
+                            uykuSuresi = sleepDurationState.value,
+                            egzersizOzeti = exerciseSummaryState.value,
+                            heartRatePoints = heartRatePointsState.value,
                             onBack = {
                                 currentScreen = "home"
                             }
@@ -147,6 +312,23 @@ class MainActivity : ComponentActivity() {
 
                     "tasks" -> {
                         TasksScreen(
+                            totalPoints = userPoints,
+                            completedTaskCount = completedTaskCount,
+                            currentSteps = stepCountState.value,
+                            sleepDuration = sleepDurationState.value,
+                            onPointsEarned = { earnedPoints ->
+                                userPoints += earnedPoints
+                                completedTaskCount += 1
+
+                                sharedPreferences
+                                    .edit()
+                                    .putInt("user_points", userPoints)
+                                    .putInt(
+                                        "completed_task_count",
+                                        completedTaskCount
+                                    )
+                                    .apply()
+                            },
                             onBack = {
                                 currentScreen = "home"
                             }
@@ -155,6 +337,24 @@ class MainActivity : ComponentActivity() {
 
                     "market" -> {
                         MarketScreen(
+                            userPoints = userPoints,
+                            onRewardPurchased = { cost, rewardTitle ->
+                                userPoints -= cost
+
+                                if (!purchasedRewards.contains(rewardTitle)) {
+                                    purchasedRewards =
+                                        purchasedRewards + rewardTitle
+                                }
+
+                                sharedPreferences
+                                    .edit()
+                                    .putInt("user_points", userPoints)
+                                    .putStringSet(
+                                        "purchased_rewards",
+                                        purchasedRewards.toSet()
+                                    )
+                                    .apply()
+                            },
                             onBack = {
                                 currentScreen = "home"
                             }
@@ -163,6 +363,11 @@ class MainActivity : ComponentActivity() {
 
                     "profile" -> {
                         ProfileScreen(
+                            userName = currentUserName,
+                            userEmail = currentUserEmail,
+                            totalPoints = userPoints,
+                            completedTaskCount = completedTaskCount,
+                            purchasedRewards = purchasedRewards,
                             onBack = {
                                 currentScreen = "home"
                             }
@@ -171,6 +376,7 @@ class MainActivity : ComponentActivity() {
 
                     "notifications" -> {
                         NotificationsScreen(
+                            hasUnreadNotifications = hasUnreadNotifications,
                             onBack = {
                                 currentScreen = "home"
                             }
@@ -180,27 +386,6 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-
-        /*
-        setContent {
-            MaterialTheme {
-                Surface(modifier = Modifier.fillMaxSize()) {
-                    AnaEkran(
-                        adimSayisi = stepCountState.value,
-                        ortalamaNabiz = avgHeartRateState.value,
-                        sonNabiz = latestHeartRateState.value,
-                        uykuSuresi = sleepDurationState.value,
-                        egzersizOzeti = exerciseSummaryState.value,
-                        ekranSuresi = screenTimeState.value,
-                        tahminiUyku = tahminiUykuState.value,
-                        durumMesaji = statusMessage.value,
-                        onYenileTiklandi = { checkHealthConnectDurumu() },
-                        onIzinIste = { kullanimErisimiAyarlarinaGit() }
-                    )
-                }
-            }
-        }*/
-        checkHealthConnectDurumu()
     }
 
     private fun checkHealthConnectDurumu() {
@@ -241,10 +426,18 @@ class MainActivity : ComponentActivity() {
             stepCountState.value = adimSayisi
             Log.d("HealthConnect", "Bugünkü adım sayısı: $adimSayisi")
 
-            val (ortalama, sonDeger) = readTodayHeartRate()
-            avgHeartRateState.value = ortalama
-            latestHeartRateState.value = sonDeger
-            Log.d("HealthConnect", "Ortalama nabız: $ortalama, Son nabız: $sonDeger")
+            val heartRateResult = readTodayHeartRate()
+
+            avgHeartRateState.value = heartRateResult.average
+            latestHeartRateState.value = heartRateResult.latest
+            heartRatePointsState.value = heartRateResult.points
+
+            Log.d(
+                "HealthConnect",
+                "Ortalama nabız: ${heartRateResult.average}, " +
+                        "Son nabız: ${heartRateResult.latest}, " +
+                        "Ölçüm sayısı: ${heartRateResult.points.size}"
+            )
 
             val uyku = readLastNightSleep()
             sleepDurationState.value = uyku
@@ -304,20 +497,53 @@ class MainActivity : ComponentActivity() {
     }
 
     // --- KALP ATIŞI (ortalama ve son değer) ---
-    private suspend fun readTodayHeartRate(): Pair<Long?, Long?> {
+    private suspend fun readTodayHeartRate(): HeartRateResult {
         val response = healthConnectClient.readRecords(
             ReadRecordsRequest(
                 recordType = HeartRateRecord::class,
-                timeRangeFilter = TimeRangeFilter.between(bugununBaslangici(), Instant.now())
+                timeRangeFilter = TimeRangeFilter.between(
+                    bugununBaslangici(),
+                    Instant.now()
+                )
             )
         )
 
-        val tumOlcumler = response.records.flatMap { it.samples }
-        if (tumOlcumler.isEmpty()) return Pair(null, null)
+        val samples = response.records
+            .flatMap { record -> record.samples }
+            .sortedBy { sample -> sample.time }
 
-        val ortalama = tumOlcumler.map { it.beatsPerMinute }.average().toLong()
-        val sonOlcum = tumOlcumler.maxByOrNull { it.time }?.beatsPerMinute
-        return Pair(ortalama, sonOlcum)
+        if (samples.isEmpty()) {
+            return HeartRateResult(
+                average = null,
+                latest = null,
+                points = emptyList()
+            )
+        }
+
+        val average = samples
+            .map { sample -> sample.beatsPerMinute }
+            .average()
+            .toLong()
+
+        val latest = samples.last().beatsPerMinute
+
+        val formatter = DateTimeFormatter.ofPattern("HH:mm")
+        val zoneId = ZoneId.systemDefault()
+
+        val points = samples.map { sample ->
+            HeartRatePoint(
+                timeLabel = sample.time
+                    .atZone(zoneId)
+                    .format(formatter),
+                bpm = sample.beatsPerMinute.toFloat()
+            )
+        }
+
+        return HeartRateResult(
+            average = average,
+            latest = latest,
+            points = points
+        )
     }
 
     // --- UYKU (son 24 saat) ---

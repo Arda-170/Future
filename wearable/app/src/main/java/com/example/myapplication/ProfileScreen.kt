@@ -18,12 +18,28 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 fun ProfileScreen(
+    userName: String,
+    userEmail: String,
+    totalPoints: Int,
+    completedTaskCount: Int,
+    purchasedRewards: List<String>,
     onBack: () -> Unit = {}
 ) {
     val background = Color(0xFFF1F7F9)
     val darkText = Color(0xFF14263D)
     val secondaryText = Color(0xFF7890A2)
     val mainTeal = Color(0xFF1D6679)
+
+    val displayName = userName.ifBlank {
+        userEmail.substringBefore("@")
+            .replaceFirstChar { it.uppercase() }
+    }
+
+    val profileInitial = displayName
+        .trim()
+        .firstOrNull()
+        ?.uppercase()
+        ?: "K"
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -56,7 +72,7 @@ fun ProfileScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "B",
+                            text = profileInitial,
                             fontSize = 39.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White
@@ -67,10 +83,17 @@ fun ProfileScreen(
                 Spacer(modifier = Modifier.height(14.dp))
 
                 Text(
-                    text = "Büşra Çamalan",
+                    text = displayName,
                     fontSize = 25.sp,
                     fontWeight = FontWeight.Bold,
                     color = darkText
+                )
+
+                Text(
+                    text = userEmail,
+                    modifier = Modifier.padding(top = 4.dp),
+                    fontSize = 13.sp,
+                    color = secondaryText
                 )
 
                 Text(
@@ -89,13 +112,13 @@ fun ProfileScreen(
             ) {
                 ProfileStatCard(
                     modifier = Modifier.weight(1f),
-                    value = "1.250",
+                    value = totalPoints.toString(),
                     title = "Toplam Puan"
                 )
 
                 ProfileStatCard(
                     modifier = Modifier.weight(1f),
-                    value = "18",
+                    value = completedTaskCount.toString(),
                     title = "Görev"
                 )
 
@@ -104,6 +127,51 @@ fun ProfileScreen(
                     value = "21",
                     title = "En Uzun Seri"
                 )
+            }
+
+            Spacer(modifier = Modifier.height(22.dp))
+
+            Text(
+                text = "Ödüllerim",
+                fontSize = 19.sp,
+                fontWeight = FontWeight.Bold,
+                color = darkText
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            if (purchasedRewards.isEmpty()) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(17.dp),
+                    color = Color.White
+                ) {
+                    Column(
+                        modifier = Modifier.padding(17.dp)
+                    ) {
+                        Text(
+                            text = "Henüz ödülün yok",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = darkText
+                        )
+
+                        Text(
+                            text = "Görevlerden puan kazanıp Market’ten ödül açabilirsin.",
+                            modifier = Modifier.padding(top = 5.dp),
+                            fontSize = 12.sp,
+                            color = secondaryText
+                        )
+                    }
+                }
+            } else {
+                purchasedRewards.forEach { rewardTitle ->
+                    PurchasedRewardCard(
+                        rewardTitle = rewardTitle
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+                }
             }
 
             Spacer(modifier = Modifier.height(22.dp))
@@ -210,6 +278,64 @@ private fun ProfileOptionCard(
                 text = "›",
                 fontSize = 28.sp,
                 color = Color(0xFF7890A2)
+            )
+        }
+    }
+}
+
+@Composable
+private fun PurchasedRewardCard(
+    rewardTitle: String
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(17.dp),
+        color = Color.White
+    ) {
+        Row(
+            modifier = Modifier.padding(17.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                modifier = Modifier.size(46.dp),
+                shape = CircleShape,
+                color = Color(0xFFFFF1C9)
+            ) {
+                Box(
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "🎁",
+                        fontSize = 22.sp
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(13.dp))
+
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = rewardTitle,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF14263D)
+                )
+
+                Text(
+                    text = "Market’ten kazanıldı",
+                    modifier = Modifier.padding(top = 4.dp),
+                    fontSize = 12.sp,
+                    color = Color(0xFF7890A2)
+                )
+            }
+
+            Text(
+                text = "✓",
+                fontSize = 19.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF35AD6D)
             )
         }
     }

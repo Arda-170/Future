@@ -19,6 +19,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.remember
 
 private val TasksBackground = Color(0xFFF1F7F9)
 private val TasksDarkText = Color(0xFF14263D)
@@ -39,68 +41,110 @@ private data class TaskItem(
 
 @Composable
 fun TasksScreen(
+    totalPoints: Int,
+    completedTaskCount: Int,
+    currentSteps: Long?,
+    sleepDuration: String?,
+    onPointsEarned: (Int) -> Unit,
     onBack: () -> Unit = {}
 ) {
-    val tasks = listOf(
-        TaskItem(
-            symbol = "✓",
-            title = "Günlük Kontrol",
-            description = "Bugünkü ruh hâli ve iyileşme kontrolünü tamamla.",
-            points = 5,
-            progress = 1f,
-            progressText = "Tamamlandı",
-            completed = true
-        ),
-        TaskItem(
-            symbol = "👣",
-            title = "Adım Hedefi",
-            description = "Bugün 8.000 adım hedefine ulaş.",
-            points = 10,
-            progress = 0.78f,
-            progressText = "6.241 / 8.000 adım",
-            completed = false
-        ),
-        TaskItem(
-            symbol = "💧",
-            title = "Su Hedefi",
-            description = "Gün içinde 8 bardak su iç.",
-            points = 10,
-            progress = 0.75f,
-            progressText = "6 / 8 bardak",
-            completed = false
-        ),
-        TaskItem(
-            symbol = "🧘",
-            title = "Nefes Egzersizi",
-            description = "En az bir nefes egzersizi tamamla.",
-            points = 15,
-            progress = 0f,
-            progressText = "Henüz başlamadı",
-            completed = false
-        ),
-        TaskItem(
-            symbol = "😴",
-            title = "Uyku Hedefi",
-            description = "En az 7 saat uyku kaydı oluştur.",
-            points = 10,
-            progress = 1f,
-            progressText = "7 sa 12 dk",
-            completed = true
-        ),
-        TaskItem(
-            symbol = "🔥",
-            title = "7 Günlük Seri",
-            description = "Yedi gün boyunca günlük kontrolleri aksatma.",
-            points = 50,
-            progress = 0.71f,
-            progressText = "5 / 7 gün",
-            completed = false
-        )
-    )
 
-    val earnedPoints = tasks
-        .filter { it.completed }
-        .sumOf { it.points }
+    val stepGoal = 8000L
+    val steps = currentSteps ?: 0L
+    val stepProgress = (steps.toFloat() / stepGoal.toFloat())
+        .coerceIn(0f, 1f)
+    val stepCompleted = steps >= stepGoal
+    val sleepGoalMinutes = 7 * 60
+    val sleepMinutes = parseSleepDurationToMinutes(sleepDuration)
+
+    val sleepProgress = if (sleepMinutes == null) {
+        0f
+    } else {
+        (sleepMinutes.toFloat() / sleepGoalMinutes.toFloat())
+            .coerceIn(0f, 1f)
+    }
+
+    val sleepCompleted = sleepMinutes != null &&
+            sleepMinutes >= sleepGoalMinutes
+
+    val tasks = remember(
+        currentSteps,
+        sleepDuration
+    ) {
+        mutableStateListOf(
+            TaskItem(
+                symbol = "✓",
+                title = "Günlük Kontrol",
+                description = "Bugünkü ruh hâli ve iyileşme kontrolünü tamamla.",
+                points = 5,
+                progress = 1f,
+                progressText = "Tamamlandı",
+                completed = true
+            ),
+            TaskItem(
+                symbol = "👣",
+                title = "Adım Hedefi",
+                description = "Bugün 8.000 adım hedefine ulaş.",
+                points = 10,
+                progress = stepProgress,
+                progressText = if (currentSteps == null) {
+                    "Adım verisi bulunamadı"
+                } else {
+                    "${formatTaskNumber(steps)} / 8.000 adım"
+                },
+                completed = stepCompleted
+            ),
+            TaskItem(
+                symbol = "💧",
+                title = "Su Hedefi",
+                description = "Gün içinde 8 bardak su iç.",
+                points = 10,
+                progress = 0.75f,
+                progressText = "6 / 8 bardak",
+                completed = false
+            ),
+            TaskItem(
+                symbol = "🧘",
+                title = "Nefes Egzersizi",
+                description = "En az bir nefes egzersizi tamamla.",
+                points = 15,
+                progress = 0f,
+                progressText = "Henüz başlamadı",
+                completed = false
+            ),
+            TaskItem(
+                symbol = "😴",
+                title = "Uyku Hedefi",
+                description = "En az 7 saat uyku kaydı oluştur.",
+                points = 10,
+                progress = sleepProgress,
+                progressText = when {
+                    sleepDuration.isNullOrBlank() ||
+                            sleepDuration == "Veri yok" -> {
+                        "Uyku verisi bulunamadı"
+                    }
+
+                    sleepCompleted -> {
+                        "$sleepDuration · Tamamlandı"
+                    }
+
+                    else -> {
+                        "$sleepDuration / 7 saat"
+                    }
+                },
+                completed = sleepCompleted
+            ),
+            TaskItem(
+                symbol = "🔥",
+                title = "7 Günlük Seri",
+                description = "Yedi gün boyunca günlük kontrolleri aksatma.",
+                points = 50,
+                progress = 0.71f,
+                progressText = "5 / 7 gün",
+                completed = false
+            )
+        )
+    }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -137,15 +181,29 @@ fun TasksScreen(
             Spacer(modifier = Modifier.height(22.dp))
 
             TaskPointsCard(
-                earnedPoints = earnedPoints,
-                completedTasks = tasks.count { it.completed },
+                earnedPoints = totalPoints,
+                completedTasks = completedTaskCount,
                 totalTasks = tasks.size
             )
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            tasks.forEach { task ->
-                TaskCard(task = task)
+            tasks.forEachIndexed { index, task ->
+                TaskCard(
+                    task = task,
+                    onComplete = {
+                        if (!task.completed) {
+                            tasks[index] = task.copy(
+                                completed = true,
+                                progress = 1f,
+                                progressText = "Tamamlandı"
+                            )
+
+                            onPointsEarned(task.points)
+                        }
+                    }
+                )
+
                 Spacer(modifier = Modifier.height(12.dp))
             }
 
@@ -207,7 +265,8 @@ private fun TaskPointsCard(
 
 @Composable
 private fun TaskCard(
-    task: TaskItem
+    task: TaskItem,
+    onComplete: () -> Unit
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -324,16 +383,49 @@ private fun TaskCard(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Button(
-                    onClick = { },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = TasksTeal
-                    )
+                    onClick = onComplete,
+                    enabled = !task.completed,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Görevi Başlat")
+                    Text(
+                        text = if (task.completed) {
+                            "Tamamlandı"
+                        } else {
+                            "Görevi Tamamla"
+                        }
+                    )
                 }
             }
         }
+    }
+}
+private fun formatTaskNumber(value: Long): String {
+    return "%,d".format(value).replace(',', '.')
+}
+
+private fun parseSleepDurationToMinutes(value: String?): Int? {
+    if (value.isNullOrBlank() || value == "Veri yok") {
+        return null
+    }
+
+    val hourRegex = Regex("""(\d+)\s*sa""")
+    val minuteRegex = Regex("""(\d+)\s*dk""")
+
+    val hours = hourRegex.find(value)
+        ?.groupValues
+        ?.getOrNull(1)
+        ?.toIntOrNull()
+        ?: 0
+
+    val minutes = minuteRegex.find(value)
+        ?.groupValues
+        ?.getOrNull(1)
+        ?.toIntOrNull()
+        ?: 0
+
+    return if (hours == 0 && minutes == 0) {
+        null
+    } else {
+        hours * 60 + minutes
     }
 }

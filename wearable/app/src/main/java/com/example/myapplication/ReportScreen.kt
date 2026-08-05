@@ -28,6 +28,12 @@ private val ReportTeal = Color(0xFF1D6679)
 
 @Composable
 fun ReportScreen(
+    adimSayisi: Long? = null,
+    ortalamaNabiz: Long? = null,
+    sonNabiz: Long? = null,
+    uykuSuresi: String? = null,
+    egzersizOzeti: String? = null,
+    heartRatePoints: List<HeartRatePoint> = emptyList(),
     onBack: () -> Unit = {}
 ) {
     Surface(
@@ -64,7 +70,10 @@ fun ReportScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            ReportSummaryCards()
+            ReportSummaryCards(
+                stepCount = adimSayisi,
+                averageHeartRate = ortalamaNabiz
+            )
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -72,11 +81,23 @@ fun ReportScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            HeartRateReportCard()
+            HeartRateReportCard(
+                averageHeartRate = ortalamaNabiz,
+                latestHeartRate = sonNabiz,
+                heartRatePoints = heartRatePoints
+            )
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            SleepReportCard()
+            SleepReportCard(
+                sleepDuration = uykuSuresi
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            ExerciseReportCard(
+                exerciseSummary = egzersizOzeti
+            )
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -93,15 +114,18 @@ fun ReportScreen(
 }
 
 @Composable
-private fun ReportSummaryCards() {
+private fun ReportSummaryCards(
+    stepCount: Long?,
+    averageHeartRate: Long?
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         ReportSmallCard(
             modifier = Modifier.weight(1f),
-            title = "ORT. ADIM",
-            value = "6.241",
+            title = "BUGÜNKÜ ADIM",
+            value = stepCount?.let { formatReportNumber(it) } ?: "--",
             unit = "adım",
             backgroundColor = Color(0xFFD6EFF6)
         )
@@ -109,11 +133,14 @@ private fun ReportSummaryCards() {
         ReportSmallCard(
             modifier = Modifier.weight(1f),
             title = "ORT. NABIZ",
-            value = "72",
+            value = averageHeartRate?.toString() ?: "--",
             unit = "bpm",
             backgroundColor = Color(0xFFFFE2DA)
         )
     }
+}
+private fun formatReportNumber(value: Long): String {
+    return "%,d".format(value).replace(',', '.')
 }
 
 @Composable
@@ -252,37 +279,15 @@ private fun ReportBar(
 }
 
 @Composable
-private fun HeartRateReportCard() {
+private fun HeartRateReportCard(
+    averageHeartRate: Long?,
+    latestHeartRate: Long?,
+    heartRatePoints: List<HeartRatePoint>
+) {
 
-    // Şimdilik örnek nabız ölçümleri.
-    // Daha sonra Health Connect'ten gelen verilerle değiştirilecek.
-    val heartRateValues = listOf(
-        68f,
-        71f,
-        70f,
-        74f,
-        78f,
-        96f,
-        108f,
-        89f,
-        76f,
-        73f,
-        71f
-    )
-
-    val timeLabels = listOf(
-        "08:00",
-        "09:00",
-        "10:00",
-        "11:00",
-        "12:00",
-        "13:00",
-        "14:00",
-        "15:00",
-        "16:00",
-        "17:00",
-        "18:00"
-    )
+    val heartRateValues = heartRatePoints.map { it.bpm }
+    val timeLabels = heartRatePoints.map { it.timeLabel }
+    val hasChartData = heartRateValues.size >= 2
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -306,7 +311,7 @@ private fun HeartRateReportCard() {
                     )
 
                     Text(
-                        text = "Gün içindeki ölçüm değişimi",
+                        text = "Gün içindeki nabız ölçümleri",
                         modifier = Modifier.padding(top = 4.dp),
                         fontSize = 13.sp,
                         color = ReportSecondaryText
@@ -318,7 +323,7 @@ private fun HeartRateReportCard() {
                     color = Color(0xFFFFE2DA)
                 ) {
                     Text(
-                        text = "Ort. 80 bpm",
+                        text = averageHeartRate?.let { "Ort. $it bpm" } ?: "Ort. -- bpm",
                         modifier = Modifier.padding(
                             horizontal = 10.dp,
                             vertical = 6.dp
@@ -332,58 +337,90 @@ private fun HeartRateReportCard() {
 
             Spacer(modifier = Modifier.height(22.dp))
 
-            HeartRateLineChart(
-                values = heartRateValues,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(190.dp)
-            )
+            if (hasChartData) {
 
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = timeLabels.first(),
-                    fontSize = 11.sp,
-                    color = ReportSecondaryText
+                HeartRateLineChart(
+                    values = heartRateValues,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(190.dp)
                 )
 
-                Text(
-                    text = "13:00",
-                    fontSize = 11.sp,
-                    color = ReportSecondaryText
-                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = timeLabels.first(),
+                        fontSize = 11.sp,
+                        color = ReportSecondaryText
+                    )
+
+                    Text(
+                        text = timeLabels[timeLabels.size / 2],
+                        fontSize = 11.sp,
+                        color = ReportSecondaryText
+                    )
+
+                    Text(
+                        text = timeLabels.last(),
+                        fontSize = 11.sp,
+                        color = ReportSecondaryText
+                    )
+                }
+
+            } else {
 
                 Text(
-                    text = timeLabels.last(),
-                    fontSize = 11.sp,
-                    color = ReportSecondaryText
+                    text = "Grafik için yeterli veri bulunamadı.",
+                    color = ReportSecondaryText,
+                    modifier = Modifier.padding(vertical = 24.dp)
                 )
+
             }
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(14.dp),
-                color = Color(0xFFFFF1EC)
-            ) {
-                Column(
-                    modifier = Modifier.padding(14.dp)
+            if (heartRatePoints.size >= 2) {
+                val highestPoint = heartRatePoints.maxByOrNull { it.bpm }
+
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    color = Color(0xFFFFF1EC)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(14.dp)
+                    ) {
+                        Text(
+                            text = "Dikkat çeken ölçüm",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFC85F4A)
+                        )
+
+                        Text(
+                            text = highestPoint?.let {
+                                "${it.timeLabel} saatinde ${it.bpm.toInt()} bpm ölçüldü."
+                            } ?: "Yeterli ölçüm bulunamadı.",
+                            modifier = Modifier.padding(top = 5.dp),
+                            fontSize = 12.sp,
+                            lineHeight = 18.sp,
+                            color = ReportSecondaryText
+                        )
+                    }
+                }
+            } else {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    color = Color(0xFFF1F7F9)
                 ) {
                     Text(
-                        text = "Dikkat çeken yükselme",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFFC85F4A)
-                    )
-
-                    Text(
-                        text = "13:00–14:00 arasında nabız değerinde belirgin bir yükselme görülüyor.",
-                        modifier = Modifier.padding(top = 5.dp),
+                        text = "Nabız değerlendirmesi için daha fazla ölçüm gerekiyor.",
+                        modifier = Modifier.padding(14.dp),
                         fontSize = 12.sp,
                         lineHeight = 18.sp,
                         color = ReportSecondaryText
@@ -394,19 +431,25 @@ private fun HeartRateReportCard() {
             Spacer(modifier = Modifier.height(14.dp))
 
             ReportInformationRow(
-                title = "En düşük",
-                value = "68 bpm"
-            )
-
-            ReportInformationRow(
-                title = "En yüksek",
-                value = "108 bpm"
+                title = "Son ölçüm",
+                value = latestHeartRate?.let { "$it bpm" } ?: "Veri yok"
             )
 
             ReportInformationRow(
                 title = "Ortalama",
-                value = "80 bpm"
+                value = averageHeartRate?.let { "$it bpm" } ?: "Veri yok"
             )
+
+            ReportInformationRow(
+                title = "Durum",
+                value = when {
+                    latestHeartRate == null -> "Veri yok"
+                    latestHeartRate < 60 -> "Düşük"
+                    latestHeartRate <= 100 -> "Normal"
+                    else -> "Yüksek"
+                }
+            )
+
         }
     }
 }
@@ -512,7 +555,9 @@ private fun HeartRateLineChart(
 }
 
 @Composable
-private fun SleepReportCard() {
+private fun SleepReportCard(
+    sleepDuration: String?
+) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
@@ -532,17 +577,18 @@ private fun SleepReportCard() {
 
             ReportInformationRow(
                 title = "Son uyku",
-                value = "7 sa 12 dk"
+                value = sleepDuration ?: "Veri yok"
             )
 
             ReportInformationRow(
-                title = "Haftalık ortalama",
-                value = "6 sa 48 dk"
-            )
-
-            ReportInformationRow(
-                title = "Değerlendirme",
-                value = "İyi"
+                title = "Durum",
+                value = if (
+                    sleepDuration == null || sleepDuration == "Veri yok"
+                ) {
+                    "Kayıt bulunamadı"
+                } else {
+                    "Kayıt mevcut"
+                }
             )
         }
     }
@@ -571,5 +617,34 @@ private fun ReportInformationRow(
             fontWeight = FontWeight.SemiBold,
             color = ReportDarkText
         )
+    }
+}
+
+@Composable
+private fun ExerciseReportCard(
+    exerciseSummary: String?
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        color = Color.White
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp)
+        ) {
+            Text(
+                text = "Egzersiz Özeti",
+                fontSize = 17.sp,
+                fontWeight = FontWeight.Bold,
+                color = ReportDarkText
+            )
+
+            Text(
+                text = exerciseSummary ?: "Veri bulunamadı",
+                modifier = Modifier.padding(top = 10.dp),
+                fontSize = 14.sp,
+                color = ReportSecondaryText
+            )
+        }
     }
 }
