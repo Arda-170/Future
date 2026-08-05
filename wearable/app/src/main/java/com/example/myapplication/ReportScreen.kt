@@ -28,7 +28,6 @@ private val ReportTeal = Color(0xFF1D6679)
 
 @Composable
 fun ReportScreen(
-<<<<<<< Updated upstream
     adimSayisi: Long? = null,
     ortalamaNabiz: Long? = null,
     sonNabiz: Long? = null,
@@ -36,12 +35,6 @@ fun ReportScreen(
     egzersizOzeti: String? = null,
     heartRatePoints: List<HeartRatePoint> = emptyList(),
     onBack: () -> Unit = {}
-=======
-    onBack: () -> Unit = {},
-    adimSayisi: Long? = null,
-    ortalamaNabiz: Long? = null,
-    uykuSuresi: String? = null
->>>>>>> Stashed changes
 ) {
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -78,7 +71,6 @@ fun ReportScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             ReportSummaryCards(
-<<<<<<< Updated upstream
                 stepCount = adimSayisi,
                 averageHeartRate = ortalamaNabiz
             )
@@ -114,15 +106,7 @@ fun ReportScreen(
                 fontSize = 12.sp,
                 lineHeight = 18.sp,
                 color = ReportSecondaryText
-=======
-                adimSayisi = adimSayisi,
-                ortalamaNabiz = ortalamaNabiz
->>>>>>> Stashed changes
             )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            SleepReportCard(uykuSuresi = uykuSuresi)
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -147,13 +131,8 @@ fun ReportScreen(
 
 @Composable
 private fun ReportSummaryCards(
-<<<<<<< Updated upstream
     stepCount: Long?,
     averageHeartRate: Long?
-=======
-    adimSayisi: Long?,
-    ortalamaNabiz: Long?
->>>>>>> Stashed changes
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -162,11 +141,7 @@ private fun ReportSummaryCards(
         ReportSmallCard(
             modifier = Modifier.weight(1f),
             title = "BUGÜNKÜ ADIM",
-<<<<<<< Updated upstream
             value = stepCount?.let { formatReportNumber(it) } ?: "--",
-=======
-            value = adimSayisi?.let { "%,d".format(it).replace(',', '.') } ?: "--",
->>>>>>> Stashed changes
             unit = "adım",
             backgroundColor = Color(0xFFD6EFF6)
         )
@@ -174,23 +149,17 @@ private fun ReportSummaryCards(
         ReportSmallCard(
             modifier = Modifier.weight(1f),
             title = "ORT. NABIZ",
-<<<<<<< Updated upstream
             value = averageHeartRate?.toString() ?: "--",
-=======
-            value = ortalamaNabiz?.toString() ?: "--",
->>>>>>> Stashed changes
             unit = "bpm",
             backgroundColor = Color(0xFFFFE2DA)
         )
     }
 }
-<<<<<<< Updated upstream
+
 private fun formatReportNumber(value: Long): String {
     return "%,d".format(value).replace(',', '.')
 }
 
-=======
->>>>>>> Stashed changes
 @Composable
 private fun ReportSmallCard(
     modifier: Modifier = Modifier,
@@ -532,7 +501,6 @@ private fun HeartRateLineChart(
         val graphWidth = graphRight - graphLeft
         val graphHeight = graphBottom - graphTop
 
-        // Arka plandaki yatay yardımcı çizgiler
         repeat(4) { index ->
             val y = graphTop + (graphHeight / 3f) * index
 
@@ -603,13 +571,9 @@ private fun HeartRateLineChart(
 }
 
 @Composable
-<<<<<<< Updated upstream
 private fun SleepReportCard(
     sleepDuration: String?
 ) {
-=======
-private fun SleepReportCard(uykuSuresi: String?) {
->>>>>>> Stashed changes
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
@@ -628,7 +592,6 @@ private fun SleepReportCard(uykuSuresi: String?) {
             Spacer(modifier = Modifier.height(14.dp))
 
             ReportInformationRow(
-<<<<<<< Updated upstream
                 title = "Son uyku",
                 value = sleepDuration ?: "Veri yok"
             )
@@ -642,10 +605,6 @@ private fun SleepReportCard(uykuSuresi: String?) {
                 } else {
                     "Kayıt mevcut"
                 }
-=======
-                title = "Bugünkü uyku",
-                value = uykuSuresi ?: "Veri yok"
->>>>>>> Stashed changes
             )
         }
     }

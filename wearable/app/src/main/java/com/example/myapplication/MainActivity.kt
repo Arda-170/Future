@@ -39,9 +39,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-<<<<<<< Updated upstream
+
 import java.time.format.DateTimeFormatter
 import androidx.compose.runtime.mutableIntStateOf
+import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.auth.providers.builtin.Email
 data class HeartRatePoint(
     val timeLabel: String,
     val bpm: Float
@@ -54,12 +57,6 @@ data class HeartRateResult(
 )
 
 
-=======
-
-import io.github.jan.supabase.auth.auth
-import io.github.jan.supabase.postgrest.from
-import io.github.jan.supabase.auth.providers.builtin.Email
->>>>>>> Stashed changes
 class MainActivity : ComponentActivity() {
 
     private val healthConnectClient by lazy {
@@ -100,10 +97,10 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-<<<<<<< Updated upstream
+
         val sharedPreferences =
             getSharedPreferences("UserData", MODE_PRIVATE)
-=======
+
         lifecycleScope.launch {
             try {
                 if (supabase.auth.currentUserOrNull() == null) {
@@ -123,7 +120,7 @@ class MainActivity : ComponentActivity() {
                 Log.e("Supabase", "Giriş hatası: ${e.message}")
             }
         }
->>>>>>> Stashed changes
+
 
         setContent {
             MaterialTheme {
@@ -392,10 +389,7 @@ class MainActivity : ComponentActivity() {
                             heartRatePoints = heartRatePointsState.value,
                             onBack = {
                                 currentScreen = "home"
-                            },
-                            adimSayisi = stepCountState.value,
-                            ortalamaNabiz = avgHeartRateState.value,
-                            uykuSuresi = sleepDurationState.value ?: tahminiUykuState.value
+                            }
                         )
 
                     }
