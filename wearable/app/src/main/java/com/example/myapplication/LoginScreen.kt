@@ -1,20 +1,38 @@
 package com.example.myapplication
 
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+
+private val LoginPrimary = Color(0xFF1D6679)
+private val LoginSecondaryText = Color(0xFF7890A2)
+private val LoginAccent = Color(0xFF4F7F8D)
+private val LoginFieldBackground = Color(0xFFFDFEFE)
+private val LoginFieldBorder = Color(0xFFB8D5DE)
+private val LoginErrorColor = Color(0xFFC45145)
 
 @Composable
 fun LoginScreen(
@@ -23,7 +41,8 @@ fun LoginScreen(
         email: String,
         password: String
     ) -> Unit,
-    onRegister: () -> Unit = {}
+    onRegister: () -> Unit = {},
+    onForgotPassword: () -> Unit = {}
 ) {
     var email by remember {
         mutableStateOf("")
@@ -33,134 +52,125 @@ fun LoginScreen(
         mutableStateOf("")
     }
 
-    var errorMessage by remember {
+    var localError by remember {
         mutableStateOf<String?>(null)
     }
 
-    val background = Color(0xFFF1F7F9)
-    val darkText = Color(0xFF14263D)
-    val secondaryText = Color(0xFF7890A2)
-    val mainTeal = Color(0xFF1D6679)
+    val visibleError = localError ?: loginError
 
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = background
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFFCDEAF1),
+                        Color(0xFFEAF7F9),
+                        Color(0xFFF5ECD4)
+                    )
+                )
+            )
     ) {
+        LoginNetworkBackdrop()
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(28.dp),
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .padding(horizontal = 28.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(modifier = Modifier.weight(1f))
-
-            Surface(
-                modifier = Modifier.size(92.dp),
-                shape = CircleShape,
-                color = Color(0xFFD8F0F2)
-            ) {
-                Box(
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "♡",
-                        fontSize = 44.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = mainTeal
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(26.dp))
+            Spacer(modifier = Modifier.weight(0.9f))
 
             Text(
-                text = "Hoş geldin",
-                fontSize = 29.sp,
+                text = "FUTURE",
+                fontSize = 42.sp,
                 fontWeight = FontWeight.Bold,
-                color = darkText,
+                color = LoginPrimary,
                 textAlign = TextAlign.Center
             )
 
+            Text(
+                text = "Küçük adımlar, büyük zaferler",
+                modifier = Modifier.padding(top = 8.dp),
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium,
+                color = LoginAccent,
+                textAlign = TextAlign.Center
+            )
 
-            Spacer(modifier = Modifier.height(34.dp))
+            Spacer(modifier = Modifier.height(48.dp))
 
-            OutlinedTextField(
+            LoginTextField(
                 value = email,
                 onValueChange = {
                     email = it
-                    errorMessage = null
+                    localError = null
                 },
-                modifier = Modifier.fillMaxWidth(),
-                label = {
-                    Text("E-posta")
-                },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Email
-                ),
-                shape = RoundedCornerShape(16.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = mainTeal,
-                    focusedLabelColor = mainTeal,
-                    unfocusedContainerColor = Color.White,
-                    focusedContainerColor = Color.White
-                )
+                placeholder = "E-posta",
+                keyboardType = KeyboardType.Email
             )
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            OutlinedTextField(
+            LoginTextField(
                 value = password,
                 onValueChange = {
                     password = it
-                    errorMessage = null
+                    localError = null
                 },
-                modifier = Modifier.fillMaxWidth(),
-                label = {
-                    Text("Şifre")
-                },
-                singleLine = true,
-                visualTransformation = PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Password
-                ),
-                shape = RoundedCornerShape(16.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = mainTeal,
-                    focusedLabelColor = mainTeal,
-                    unfocusedContainerColor = Color.White,
-                    focusedContainerColor = Color.White
-                )
+                placeholder = "Şifre",
+                keyboardType = KeyboardType.Password,
+                isPassword = true
             )
 
-            val visibleError = errorMessage ?: loginError
+            Text(
+                text = "Şifreni mi unuttun?",
+                modifier = Modifier
+                    .align(Alignment.End)
+                    .padding(top = 14.dp)
+                    .clickable {
+                        onForgotPassword()
+                    },
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                color = LoginSecondaryText
+            )
 
-            if (visibleError != null) {
+            if (!visibleError.isNullOrBlank()) {
                 Text(
                     text = visibleError,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 10.dp),
+                        .padding(top = 12.dp),
                     fontSize = 13.sp,
-                    color = Color(0xFFD96849)
+                    color = LoginErrorColor
                 )
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(22.dp))
 
             Button(
                 onClick = {
                     when {
                         email.isBlank() -> {
-                            errorMessage = "Lütfen e-posta adresini gir."
+                            localError =
+                                "Lütfen e-posta adresini gir."
+                        }
+
+                        !email.contains("@") -> {
+                            localError =
+                                "Lütfen geçerli bir e-posta adresi gir."
                         }
 
                         password.isBlank() -> {
-                            errorMessage = "Lütfen şifreni gir."
+                            localError =
+                                "Lütfen şifreni gir."
                         }
 
                         password.length < 6 -> {
-                            errorMessage =
+                            localError =
                                 "Şifre en az 6 karakter olmalıdır."
                         }
 
@@ -175,31 +185,163 @@ fun LoginScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(58.dp),
-                shape = RoundedCornerShape(18.dp),
+                shape = RoundedCornerShape(20.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = mainTeal
+                    containerColor = LoginPrimary,
+                    contentColor = Color.White
+                ),
+                elevation = ButtonDefaults.buttonElevation(
+                    defaultElevation = 7.dp,
+                    pressedElevation = 2.dp
                 )
             ) {
                 Text(
                     text = "Giriş Yap",
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.Bold
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold
                 )
             }
 
-            TextButton(
-                onClick = onRegister,
-                modifier = Modifier.padding(top = 8.dp)
+            Row(
+                modifier = Modifier.padding(top = 28.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Hesabın yok mu? Kayıt Ol",
-                    fontSize = 14.sp,
-                    color = mainTeal
+                    text = "Hesabın yok mu? ",
+                    fontSize = 15.sp,
+                    color = LoginSecondaryText
+                )
+
+                Text(
+                    text = "Kayıt Ol",
+                    modifier = Modifier.clickable {
+                        onRegister()
+                    },
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = LoginPrimary
                 )
             }
 
-            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.weight(1.1f))
+        }
+    }
+}
 
+@Composable
+private fun LoginTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+    keyboardType: KeyboardType,
+    isPassword: Boolean = false
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(64.dp),
+        placeholder = {
+            Text(
+                text = placeholder,
+                fontSize = 16.sp,
+                color = LoginSecondaryText
+            )
+        },
+        singleLine = true,
+        visualTransformation = if (isPassword) {
+            PasswordVisualTransformation()
+        } else {
+            VisualTransformation.None
+        },
+        keyboardOptions = KeyboardOptions(
+            keyboardType = keyboardType
+        ),
+        shape = RoundedCornerShape(22.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = LoginPrimary,
+            unfocusedBorderColor = LoginFieldBorder,
+            focusedContainerColor =
+                LoginFieldBackground.copy(alpha = 0.94f),
+            unfocusedContainerColor =
+                LoginFieldBackground.copy(alpha = 0.88f),
+            cursorColor = LoginPrimary,
+            focusedTextColor = Color(0xFF14263D),
+            unfocusedTextColor = Color(0xFF14263D)
+        )
+    )
+}
+
+@Composable
+private fun LoginNetworkBackdrop() {
+    Canvas(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        val networkColor = Color(0xFF1D6679)
+
+        val nodes = listOf(
+            Offset(size.width * 0.03f, size.height * 0.10f),
+            Offset(size.width * 0.25f, size.height * 0.01f),
+            Offset(size.width * 0.71f, size.height * 0.15f),
+            Offset(size.width * 0.98f, size.height * 0.07f),
+            Offset(size.width * 0.04f, size.height * 0.33f),
+            Offset(size.width * 0.45f, size.height * 0.43f),
+            Offset(size.width * 0.86f, size.height * 0.59f),
+            Offset(size.width * 0.18f, size.height * 0.95f)
+        )
+
+        val links = listOf(
+            0 to 1,
+            1 to 2,
+            2 to 3,
+            0 to 4,
+            1 to 4,
+            4 to 5,
+            2 to 5,
+            5 to 6,
+            4 to 7,
+            5 to 7,
+            3 to 6
+        )
+
+        links.forEach { (start, end) ->
+            drawLine(
+                color = networkColor.copy(alpha = 0.13f),
+                start = nodes[start],
+                end = nodes[end],
+                strokeWidth = 2.5.dp.toPx(),
+                pathEffect = PathEffect.cornerPathEffect(
+                    3.dp.toPx()
+                )
+            )
+        }
+
+        nodes.forEachIndexed { index, point ->
+            drawCircle(
+                color = networkColor.copy(
+                    alpha = if (index % 3 == 0) {
+                        0.20f
+                    } else {
+                        0.14f
+                    }
+                ),
+                radius = if (index % 3 == 0) {
+                    7.dp.toPx()
+                } else {
+                    5.dp.toPx()
+                },
+                center = point,
+                style = Stroke(
+                    width = 1.5.dp.toPx()
+                )
+            )
+
+            drawCircle(
+                color = networkColor.copy(alpha = 0.12f),
+                radius = 3.dp.toPx(),
+                center = point
+            )
         }
     }
 }

@@ -4,6 +4,7 @@ import android.content.SharedPreferences
 import org.json.JSONArray
 import org.json.JSONObject
 import java.security.MessageDigest
+import java.util.Locale
 
 class LocalUserStore(
     private val preferences: SharedPreferences
@@ -40,7 +41,9 @@ class LocalUserStore(
         email: String,
         password: String
     ): LocalUser? {
-        val normalizedEmail = email.trim().lowercase()
+        val normalizedEmail = email
+            .trim()
+            .lowercase(Locale.ROOT)
         val passwordHash = hashPassword(password)
 
         return readUsers().firstOrNull { user ->
