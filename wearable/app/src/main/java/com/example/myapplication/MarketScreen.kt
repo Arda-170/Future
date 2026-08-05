@@ -9,7 +9,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -20,7 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
+import androidx.compose.material3.Scaffold
 private val MarketBackground = Color(0xFFF1F7F9)
 private val MarketDarkText = Color(0xFF14263D)
 private val MarketSecondaryText = Color(0xFF7890A2)
@@ -40,7 +39,7 @@ private data class MarketReward(
 fun MarketScreen(
     userPoints: Int,
     onRewardPurchased: (Int, String) -> Unit,
-    onBack: () -> Unit = {}
+    onNavigate: (String) -> Unit = {}
 ) {
     var selectedCategory by remember {
         mutableStateOf("Tümü")
@@ -150,24 +149,28 @@ fun MarketScreen(
         }
     }
 
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = MarketBackground
-    ) {
+    Scaffold(
+        containerColor = MarketBackground,
+        bottomBar = {
+            DashboardBottomBar(
+                currentRoute = "market",
+                onNavigate = onNavigate
+            )
+        }
+    ) { innerPadding ->
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .padding(innerPadding)
                 .verticalScroll(rememberScrollState())
-                .padding(20.dp)
+                .padding(
+                    start = 20.dp,
+                    end = 20.dp,
+                    top = 24.dp,
+                    bottom = 20.dp
+                )
         ) {
-            OutlinedButton(
-                onClick = onBack
-            ) {
-                Text("← Geri")
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
             Text(
                 text = "Market",
                 fontSize = 28.sp,
@@ -210,13 +213,17 @@ fun MarketScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    .horizontalScroll(
+                        rememberScrollState()
+                    ),
+                horizontalArrangement =
+                    Arrangement.spacedBy(8.dp)
             ) {
                 categories.forEach { category ->
                     CategoryButton(
                         title = category,
-                        selected = selectedCategory == category,
+                        selected =
+                            selectedCategory == category,
                         onClick = {
                             selectedCategory = category
                         }
@@ -226,39 +233,54 @@ fun MarketScreen(
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            visibleRewards.chunked(2).forEach { rowItems ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    rowItems.forEach { reward ->
-                        MarketRewardCard(
-                            modifier = Modifier.weight(1f),
-                            reward = reward,
-                            userPoints = userPoints,
-                            onBuy = {
-                                if (userPoints >= reward.points) {
-                                    onRewardPurchased(
-                                        reward.points,
-                                        reward.title
-                                    )
-                                    message = "${reward.title} başarıyla açıldı."
-                                } else {
-                                    message = "Bu ödül için yeterli puanın bulunmuyor."
+            visibleRewards
+                .chunked(2)
+                .forEach { rowItems ->
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement =
+                            Arrangement.spacedBy(12.dp)
+                    ) {
+                        rowItems.forEach { reward ->
+                            MarketRewardCard(
+                                modifier =
+                                    Modifier.weight(1f),
+                                reward = reward,
+                                userPoints = userPoints,
+                                onBuy = {
+                                    if (
+                                        userPoints >=
+                                        reward.points
+                                    ) {
+                                        onRewardPurchased(
+                                            reward.points,
+                                            reward.title
+                                        )
+
+                                        message =
+                                            "${reward.title} başarıyla açıldı."
+                                    } else {
+                                        message =
+                                            "Bu ödül için yeterli puanın bulunmuyor."
+                                    }
                                 }
-                            }
-                        )
+                            )
+                        }
+
+                        if (rowItems.size == 1) {
+                            Spacer(
+                                modifier =
+                                    Modifier.weight(1f)
+                            )
+                        }
                     }
 
-                    if (rowItems.size == 1) {
-                        Spacer(
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
+                    Spacer(
+                        modifier =
+                            Modifier.height(12.dp)
+                    )
                 }
-
-                Spacer(modifier = Modifier.height(12.dp))
-            }
 
             Spacer(modifier = Modifier.height(20.dp))
         }
@@ -327,17 +349,6 @@ private fun MarketPointsCard(
                     .height(8.dp),
                 color = Color(0xFF48DECD),
                 trackColor = Color.White.copy(alpha = 0.20f)
-            )
-
-            Text(
-                text = if (userPoints < nextRewardTarget) {
-                    "Bir sonraki seviyeye ${nextRewardTarget - userPoints} puan kaldı."
-                } else {
-                    "Yeni ödül seviyesini açtın."
-                },
-                modifier = Modifier.padding(top = 9.dp),
-                fontSize = 12.sp,
-                color = Color(0xFFD5EBEF)
             )
         }
     }

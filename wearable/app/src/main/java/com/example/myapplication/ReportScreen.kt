@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -20,7 +19,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-
+import androidx.compose.material3.Scaffold
 private val ReportBackground = Color(0xFFF1F7F9)
 private val ReportDarkText = Color(0xFF14263D)
 private val ReportSecondaryText = Color(0xFF7890A2)
@@ -34,26 +33,30 @@ fun ReportScreen(
     uykuSuresi: String? = null,
     egzersizOzeti: String? = null,
     heartRatePoints: List<HeartRatePoint> = emptyList(),
-    onBack: () -> Unit = {}
+    onNavigate: (String) -> Unit = {}
 ) {
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = ReportBackground
-    ) {
+    Scaffold(
+        containerColor = ReportBackground,
+        bottomBar = {
+            DashboardBottomBar(
+                currentRoute = "report",
+                onNavigate = onNavigate
+            )
+        }
+    ) { innerPadding ->
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .padding(innerPadding)
                 .verticalScroll(rememberScrollState())
-                .padding(20.dp)
+                .padding(
+                    start = 20.dp,
+                    end = 20.dp,
+                    top = 24.dp,
+                    bottom = 20.dp
+                )
         ) {
-            OutlinedButton(
-                onClick = onBack
-            ) {
-                Text("← Geri")
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
             Text(
                 text = "Sağlık Raporu",
                 fontSize = 28.sp,

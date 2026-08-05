@@ -24,8 +24,13 @@ fun KvkkScreen(
     onBack: () -> Unit = {},
     onAccept: () -> Unit = {}
 ) {
-    var kvkkAccepted by remember { mutableStateOf(false) }
-    var healthDataAccepted by remember { mutableStateOf(false) }
+    var kvkkAccepted by remember {
+        mutableStateOf(false)
+    }
+
+    var healthDataAccepted by remember {
+        mutableStateOf(false)
+    }
 
     val background = Color(0xFFF1F7F9)
     val darkText = Color(0xFF14263D)
@@ -39,8 +44,19 @@ fun KvkkScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(24.dp)
+                .windowInsetsPadding(
+                    WindowInsets.statusBars
+                )
+                .navigationBarsPadding()
+                .verticalScroll(
+                    rememberScrollState()
+                )
+                .padding(
+                    start = 20.dp,
+                    end = 20.dp,
+                    top = 20.dp,
+                    bottom = 32.dp
+                )
         ) {
             OutlinedButton(
                 onClick = onBack
@@ -48,7 +64,9 @@ fun KvkkScreen(
                 Text("← Geri")
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(
+                modifier = Modifier.height(24.dp)
+            )
 
             Text(
                 text = "Gizlilik ve Açık Rıza",
@@ -57,16 +75,21 @@ fun KvkkScreen(
                 color = darkText
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(
+                modifier = Modifier.height(12.dp)
+            )
 
             Text(
-                text = "Uygulamayı kullanmadan önce kişisel ve sağlık verilerinizin nasıl işlendiğini okuyup onaylamanız gerekir.",
+                text =
+                    "Uygulamayı kullanmadan önce kişisel ve sağlık verilerinizin nasıl işlendiğini okuyup onaylamanız gerekir.",
                 fontSize = 16.sp,
                 lineHeight = 24.sp,
                 color = secondaryText
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(
+                modifier = Modifier.height(24.dp)
+            )
 
             Surface(
                 modifier = Modifier.fillMaxWidth(),
@@ -83,7 +106,9 @@ fun KvkkScreen(
                         color = darkText
                     )
 
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(
+                        modifier = Modifier.height(10.dp)
+                    )
 
                     Text(
                         text = """
@@ -100,32 +125,48 @@ Sağlık verileri, yürürlükteki kişisel verilerin korunması mevzuatına uyg
                 }
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(
+                modifier = Modifier.height(20.dp)
+            )
 
             ConsentOption(
                 checked = kvkkAccepted,
-                onCheckedChange = { kvkkAccepted = it },
-                text = "KVKK aydınlatma metnini okudum ve anladım."
+                onCheckedChange = {
+                    kvkkAccepted = it
+                },
+                text =
+                    "KVKK aydınlatma metnini okudum ve anladım."
             )
 
             ConsentOption(
                 checked = healthDataAccepted,
-                onCheckedChange = { healthDataAccepted = it },
-                text = "Sağlık verilerimin uygulama tarafından işlenmesine açık rıza veriyorum."
+                onCheckedChange = {
+                    healthDataAccepted = it
+                },
+                text =
+                    "Sağlık verilerimin uygulama tarafından işlenmesine açık rıza veriyorum."
             )
 
-            Spacer(modifier = Modifier.height(28.dp))
+            Spacer(
+                modifier = Modifier.height(28.dp)
+            )
 
             Button(
                 onClick = onAccept,
-                enabled = kvkkAccepted && healthDataAccepted,
+                enabled =
+                    kvkkAccepted &&
+                            healthDataAccepted,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(60.dp),
                 shape = RoundedCornerShape(18.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = mainTeal,
-                    disabledContainerColor = Color(0xFFB9C9CD)
+                    contentColor = Color.White,
+                    disabledContainerColor =
+                        Color(0xFFB9C9CD),
+                    disabledContentColor =
+                        Color.White
                 )
             ) {
                 Text(
@@ -135,14 +176,22 @@ Sağlık verileri, yürürlükteki kişisel verilerin korunması mevzuatına uyg
                 )
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(
+                modifier = Modifier.height(12.dp)
+            )
 
             Text(
-                text = "Onay verdikten sonra Health Connect izin ekranına yönlendirileceksiniz.",
+                text =
+                    "Onay verdikten sonra Health Connect izin ekranına yönlendirileceksiniz.",
                 modifier = Modifier.fillMaxWidth(),
                 fontSize = 12.sp,
+                lineHeight = 18.sp,
                 color = secondaryText,
                 textAlign = TextAlign.Center
+            )
+
+            Spacer(
+                modifier = Modifier.height(20.dp)
             )
         }
     }
@@ -154,26 +203,38 @@ private fun ConsentOption(
     onCheckedChange: (Boolean) -> Unit,
     text: String
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        verticalAlignment = Alignment.Top
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = Color.White
     ) {
-        Checkbox(
-            checked = checked,
-            onCheckedChange = onCheckedChange
-        )
-
-        Text(
-            text = text,
+        Row(
             modifier = Modifier.padding(
-                start = 8.dp,
-                top = 12.dp
+                horizontal = 12.dp,
+                vertical = 8.dp
             ),
-            fontSize = 14.sp,
-            lineHeight = 20.sp,
-            color = Color(0xFF14263D)
-        )
+            verticalAlignment = Alignment.Top
+        ) {
+            Checkbox(
+                checked = checked,
+                onCheckedChange = onCheckedChange
+            )
+
+            Text(
+                text = text,
+                modifier = Modifier.padding(
+                    start = 8.dp,
+                    top = 12.dp,
+                    end = 8.dp
+                ),
+                fontSize = 14.sp,
+                lineHeight = 20.sp,
+                color = Color(0xFF14263D)
+            )
+        }
     }
+
+    Spacer(
+        modifier = Modifier.height(10.dp)
+    )
 }

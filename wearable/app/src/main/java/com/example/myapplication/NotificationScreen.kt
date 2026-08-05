@@ -1,5 +1,6 @@
 package com.example.myapplication
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -15,7 +16,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.clickable
+
 private data class NotificationItem(
     val symbol: String,
     val title: String,
@@ -23,6 +24,7 @@ private data class NotificationItem(
     val time: String,
     val unread: Boolean
 )
+
 @Composable
 fun NotificationsScreen(
     hasUnreadNotifications: Boolean,
@@ -32,42 +34,48 @@ fun NotificationsScreen(
         NotificationItem(
             symbol = "✓",
             title = "Günlük hedef tamamlandı",
-            description = "Bugünkü uyku hedefini tamamladın. Hesabına 10 puan eklendi.",
+            description =
+                "Bugünkü uyku hedefini tamamladın. Hesabına 10 puan eklendi.",
             time = "10 dk önce",
             unread = hasUnreadNotifications
         ),
         NotificationItem(
             symbol = "🔥",
             title = "Serin devam ediyor",
-            description = "Bu haftaki hedefin için 2 günün kaldı. Küçük adımlarla devam ediyorsun.",
+            description =
+                "Bu haftaki hedefin için 2 günün kaldı. Küçük adımlarla devam ediyorsun.",
             time = "1 saat önce",
             unread = hasUnreadNotifications
         ),
         NotificationItem(
             symbol = "💧",
             title = "Su hedefini hatırla",
-            description = "Günlük su hedefinin 2 bardak gerisindesin. Uygun olduğunda bir bardak su içebilirsin.",
+            description =
+                "Günlük su hedefinin 2 bardak gerisindesin. Uygun olduğunda bir bardak su içebilirsin.",
             time = "2 saat önce",
             unread = false
         ),
         NotificationItem(
             symbol = "👣",
             title = "Adım hedefine yaklaştın",
-            description = "Bugünkü adım hedefinin %75’ini tamamladın. Biraz daha hareket ederek hedefe ulaşabilirsin.",
+            description =
+                "Bugünkü adım hedefinin %75’ini tamamladın. Biraz daha hareket ederek hedefe ulaşabilirsin.",
             time = "3 saat önce",
             unread = false
         ),
         NotificationItem(
             symbol = "🫁",
             title = "Kısa bir mola iyi gelebilir",
-            description = "Bir dakikalık nefes egzersiziyle kendine kısa bir alan açabilirsin.",
+            description =
+                "Bir dakikalık nefes egzersiziyle kendine kısa bir alan açabilirsin.",
             time = "Bugün",
             unread = false
         ),
         NotificationItem(
             symbol = "🎁",
             title = "Yeni ödül erişilebilir",
-            description = "Puan bakiyenle Market’teki bazı ödülleri açabilirsin.",
+            description =
+                "Puan bakiyenle Market’teki bazı ödülleri açabilirsin.",
             time = "Dün",
             unread = false
         )
@@ -80,8 +88,17 @@ fun NotificationsScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(20.dp)
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .verticalScroll(
+                    rememberScrollState()
+                )
+                .padding(
+                    start = 20.dp,
+                    end = 20.dp,
+                    top = 12.dp,
+                    bottom = 32.dp
+                )
         ) {
             OutlinedButton(
                 onClick = onBack
@@ -89,7 +106,9 @@ fun NotificationsScreen(
                 Text("← Geri")
             }
 
-            Spacer(modifier = Modifier.height(22.dp))
+            Spacer(
+                modifier = Modifier.height(22.dp)
+            )
 
             Text(
                 text = "Bildirimler",
@@ -109,15 +128,23 @@ fun NotificationsScreen(
                 color = Color(0xFF7890A2)
             )
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(
+                modifier = Modifier.height(20.dp)
+            )
 
             notifications.forEach { notification ->
                 NotificationCard(
                     notification = notification
                 )
 
-                Spacer(modifier = Modifier.height(11.dp))
+                Spacer(
+                    modifier = Modifier.height(11.dp)
+                )
             }
+
+            Spacer(
+                modifier = Modifier.height(20.dp)
+            )
         }
     }
 }
@@ -130,6 +157,7 @@ private fun NotificationCard(
         modifier = Modifier
             .fillMaxWidth()
             .clickable {
+                // İleride bildirim detayı açılabilir.
             },
         shape = RoundedCornerShape(18.dp),
         color = if (notification.unread) {
@@ -157,7 +185,9 @@ private fun NotificationCard(
                 }
             }
 
-            Spacer(modifier = Modifier.width(13.dp))
+            Spacer(
+                modifier = Modifier.width(13.dp)
+            )
 
             Column(
                 modifier = Modifier.weight(1f)
@@ -195,4 +225,3 @@ private fun NotificationCard(
         }
     }
 }
-

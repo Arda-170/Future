@@ -31,14 +31,17 @@ fun RoleProfileScreen(
     val secondaryText = Color(0xFF7890A2)
     val mainTeal = Color(0xFF1D6679)
 
-    val displayName = userName.ifBlank {
-        userEmail
-            .substringBefore("@")
-            .replaceFirstChar { it.uppercase() }
-    }
+    val displayName = userName
+        .trim()
+        .ifBlank {
+            userEmail
+                .substringBefore("@")
+                .replaceFirstChar { character ->
+                    character.uppercase()
+                }
+        }
 
     val initial = displayName
-        .trim()
         .firstOrNull()
         ?.uppercase()
         ?: "K"
@@ -57,8 +60,17 @@ fun RoleProfileScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(20.dp)
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .verticalScroll(
+                    rememberScrollState()
+                )
+                .padding(
+                    start = 20.dp,
+                    end = 20.dp,
+                    top = 12.dp,
+                    bottom = 36.dp
+                )
         ) {
             OutlinedButton(
                 onClick = onBack
@@ -66,11 +78,14 @@ fun RoleProfileScreen(
                 Text("← Geri")
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(
+                modifier = Modifier.height(24.dp)
+            )
 
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
+                horizontalAlignment =
+                    Alignment.CenterHorizontally
             ) {
                 Surface(
                     modifier = Modifier.size(94.dp),
@@ -78,7 +93,8 @@ fun RoleProfileScreen(
                     color = mainTeal
                 ) {
                     Box(
-                        contentAlignment = Alignment.Center
+                        contentAlignment =
+                            Alignment.Center
                     ) {
                         Text(
                             text = initial,
@@ -89,7 +105,9 @@ fun RoleProfileScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(
+                    modifier = Modifier.height(14.dp)
+                )
 
                 Text(
                     text = displayName,
@@ -100,13 +118,17 @@ fun RoleProfileScreen(
 
                 Text(
                     text = userEmail,
-                    modifier = Modifier.padding(top = 4.dp),
+                    modifier = Modifier.padding(
+                        top = 4.dp
+                    ),
                     fontSize = 13.sp,
                     color = secondaryText
                 )
 
                 Surface(
-                    modifier = Modifier.padding(top = 10.dp),
+                    modifier = Modifier.padding(
+                        top = 10.dp
+                    ),
                     shape = RoundedCornerShape(50),
                     color = Color(0xFFD8F0F2)
                 ) {
@@ -117,34 +139,46 @@ fun RoleProfileScreen(
                             vertical = 6.dp
                         ),
                         fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight =
+                            FontWeight.SemiBold,
                         color = mainTeal
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(28.dp))
+            Spacer(
+                modifier = Modifier.height(28.dp)
+            )
 
             RoleProfileOptionCard(
                 title = "Hesap Bilgileri",
-                description = "Ad, e-posta ve hesap türünü görüntüle."
+                description =
+                    "Ad, e-posta ve hesap türünü görüntüle."
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(
+                modifier = Modifier.height(12.dp)
+            )
 
             RoleProfileOptionCard(
                 title = "Gizlilik ve İzinler",
-                description = "Veri erişimi ve gizlilik tercihlerini yönet."
+                description =
+                    "Veri erişimi ve gizlilik tercihlerini yönet."
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(
+                modifier = Modifier.height(12.dp)
+            )
 
             RoleProfileOptionCard(
                 title = "Ayarlar",
-                description = "Tercihlerini düzenle."
+                description =
+                    "Tercihlerini düzenle."
             )
 
-            Spacer(modifier = Modifier.height(28.dp))
+            Spacer(
+                modifier = Modifier.height(28.dp)
+            )
 
             Button(
                 onClick = onLogout,
@@ -153,18 +187,21 @@ fun RoleProfileScreen(
                     .height(56.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFD96849)
+                    containerColor =
+                        Color(0xFFD96849),
+                    contentColor = Color.White
                 )
             ) {
                 Text(
                     text = "Çıkış Yap",
                     fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    fontWeight = FontWeight.Bold
                 )
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(
+                modifier = Modifier.height(32.dp)
+            )
         }
     }
 }
@@ -181,7 +218,8 @@ private fun RoleProfileOptionCard(
     ) {
         Row(
             modifier = Modifier.padding(17.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment =
+                Alignment.CenterVertically
         ) {
             Column(
                 modifier = Modifier.weight(1f)
@@ -195,8 +233,11 @@ private fun RoleProfileOptionCard(
 
                 Text(
                     text = description,
-                    modifier = Modifier.padding(top = 5.dp),
+                    modifier = Modifier.padding(
+                        top = 5.dp
+                    ),
                     fontSize = 12.sp,
+                    lineHeight = 17.sp,
                     color = Color(0xFF7890A2)
                 )
             }

@@ -102,6 +102,10 @@ class MainActivity : ComponentActivity() {
                     LocalUserStore(sharedPreferences)
                 }
 
+                val taskStore = remember {
+                    TaskStore(sharedPreferences)
+                }
+
                 var registrationError by remember {
                     mutableStateOf<String?>(null)
                 }
@@ -209,6 +213,15 @@ class MainActivity : ComponentActivity() {
 
                 var selectedPatientName by remember {
                     mutableStateOf("")
+                }
+
+                var totalEarnedPoints by remember {
+                    mutableIntStateOf(
+                        sharedPreferences.getInt(
+                            "total_earned_points",
+                            0
+                        )
+                    )
                 }
 
                 when (currentScreen) {
@@ -361,33 +374,44 @@ class MainActivity : ComponentActivity() {
                             uykuSuresi = sleepDurationState.value,
                             egzersizOzeti = exerciseSummaryState.value,
                             heartRatePoints = heartRatePointsState.value,
-                            onBack = {
-                                currentScreen = "home"
+                            onNavigate = { destination ->
+                                currentScreen = destination
                             }
                         )
                     }
 
                     "tasks" -> {
                         TasksScreen(
+                            userEmail = currentUserEmail,
+                            taskStore = taskStore,
                             totalPoints = userPoints,
-                            completedTaskCount = completedTaskCount,
+                            totalEarnedPoints = totalEarnedPoints,
                             currentSteps = stepCountState.value,
                             sleepDuration = sleepDurationState.value,
                             onPointsEarned = { earnedPoints ->
-                                userPoints += earnedPoints
-                                completedTaskCount += 1
+                                val newBalance =
+                                    userPoints + earnedPoints
+
+                                val newTotalEarned =
+                                    totalEarnedPoints + earnedPoints
+
+                                userPoints = newBalance
+                                totalEarnedPoints = newTotalEarned
 
                                 sharedPreferences
                                     .edit()
-                                    .putInt("user_points", userPoints)
                                     .putInt(
-                                        "completed_task_count",
-                                        completedTaskCount
+                                        "user_points",
+                                        newBalance
+                                    )
+                                    .putInt(
+                                        "total_earned_points",
+                                        newTotalEarned
                                     )
                                     .apply()
                             },
-                            onBack = {
-                                currentScreen = "home"
+                            onNavigate = { destination ->
+                                currentScreen = destination
                             }
                         )
                     }
@@ -395,25 +419,32 @@ class MainActivity : ComponentActivity() {
                     "market" -> {
                         MarketScreen(
                             userPoints = userPoints,
-                            onRewardPurchased = { cost, rewardTitle ->
-                                userPoints -= cost
+                            onRewardPurchased = {
+                                    rewardCost,
+                                    rewardTitle ->
 
-                                if (!purchasedRewards.contains(rewardTitle)) {
-                                    purchasedRewards =
-                                        purchasedRewards + rewardTitle
-                                }
+                                val newBalance =
+                                    userPoints - rewardCost
+
+                                userPoints = newBalance
+
+                                purchasedRewards =
+                                    purchasedRewards + rewardTitle
 
                                 sharedPreferences
                                     .edit()
-                                    .putInt("user_points", userPoints)
+                                    .putInt(
+                                        "user_points",
+                                        newBalance
+                                    )
                                     .putStringSet(
                                         "purchased_rewards",
                                         purchasedRewards.toSet()
                                     )
                                     .apply()
                             },
-                            onBack = {
-                                currentScreen = "home"
+                            onNavigate = { destination ->
+                                currentScreen = destination
                             }
                         )
                     }
@@ -520,6 +551,22 @@ class MainActivity : ComponentActivity() {
                                 currentUserEmail = ""
                                 currentUserRole = UserRole.PATIENT
                                 currentScreen = "login"
+                            }
+                        )
+                    }
+
+                    "role_notifications" -> {
+                        RoleNotificationsScreen(
+                            userRole = currentUserRole,
+                            onBack = {
+                                currentScreen = when (currentUserRole) {
+                                    UserRole.DOCTOR,
+                                    UserRole.RELATIVE -> "monitoring_home"
+
+                                    UserRole.ADMIN -> "admin_home"
+
+                                    UserRole.PATIENT -> "home"
+                                }
                             }
                         )
                     }
