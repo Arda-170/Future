@@ -97,6 +97,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        Log.d("TEST", "onCreate çalıştı")
+
+        checkHealthConnectDurumu()
 
         val sharedPreferences =
             getSharedPreferences("UserData", MODE_PRIVATE)
@@ -617,27 +620,41 @@ class MainActivity : ComponentActivity() {
         }
     }
     private fun checkHealthConnectDurumu() {
+        Log.d("TEST", "checkHealthConnectDurumu çağrıldı")
+
         val status = HealthConnectClient.getSdkStatus(this)
+
+        Log.d("TEST", "SDK Status = $status")
 
         when (status) {
             HealthConnectClient.SDK_UNAVAILABLE -> {
-                statusMessage.value = "Bu cihaz Health Connect'i desteklemiyor"
+                Log.d("TEST", "SDK_UNAVAILABLE")
             }
+
             HealthConnectClient.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED -> {
-                statusMessage.value = "Health Connect güncellemesi/kurulumu gerekiyor"
+                Log.d("TEST", "SDK_UPDATE_REQUIRED")
             }
+
             HealthConnectClient.SDK_AVAILABLE -> {
+                Log.d("TEST", "SDK_AVAILABLE")
                 checkAndRequestPermissions()
             }
         }
     }
 
     private fun checkAndRequestPermissions() {
+        Log.d("TEST", "checkAndRequestPermissions")
+
         lifecycleScope.launch {
             val granted = healthConnectClient.permissionController.getGrantedPermissions()
+
+            Log.d("TEST", "Granted: $granted")
+
             if (granted.containsAll(permissions)) {
+                Log.d("TEST", "İzinler tamam")
                 tumVerileriCek()
             } else {
+                Log.d("TEST", "İzin eksik")
                 requestPermissionLauncher.launch(permissions)
             }
         }
@@ -646,15 +663,24 @@ class MainActivity : ComponentActivity() {
     // Tüm verileri sırayla çeken ana fonksiyon
     private fun tumVerileriCek() {
         // --- TÜM VERİLERİ SUPABASE'E GÖNDER ---
+        Log.d("TEST", "tumVerileriCek başladı")
 
         lifecycleScope.launch {
             statusMessage.value = "Veriler çekiliyor..."
 
+            Log.d("TEST", "1 - kaynaklariGoster çağrılacak")
+
             kaynaklariGoster()
 
+            Log.d("TEST", "2 - kaynaklariGoster bitti")
+
+            Log.d("TEST", "3 - readTodaySteps çağrılıyor")
+
             val adimSayisi = readTodaySteps()
+
+            Log.d("TEST", "4 - readTodaySteps bitti: $adimSayisi")
+
             stepCountState.value = adimSayisi
-            Log.d("HealthConnect", "Bugünkü adım sayısı: $adimSayisi")
 
             val heartRateResult = readTodayHeartRate()
 
