@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 fun LoginScreen(
+    loginError: String? = null,
     onLogin: (
         email: String,
         password: String
@@ -132,9 +133,11 @@ fun LoginScreen(
                 )
             )
 
-            if (errorMessage != null) {
+            val visibleError = errorMessage ?: loginError
+
+            if (visibleError != null) {
                 Text(
-                    text = errorMessage.orEmpty(),
+                    text = visibleError,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 10.dp),

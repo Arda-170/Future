@@ -98,6 +98,18 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             MaterialTheme {
+                val userStore = remember {
+                    LocalUserStore(sharedPreferences)
+                }
+
+                var registrationError by remember {
+                    mutableStateOf<String?>(null)
+                }
+
+                var loginError by remember {
+                    mutableStateOf<String?>(null)
+                }
+
                 val appPreferences = remember {
                     getSharedPreferences(
                         "app_preferences",
@@ -131,6 +143,10 @@ class MainActivity : ComponentActivity() {
                             ""
                         ) ?: ""
                     )
+                }
+
+                var currentUserRole by remember {
+                    mutableStateOf(UserRole.PATIENT)
                 }
 
                 var currentScreen by remember {
@@ -191,22 +207,32 @@ class MainActivity : ComponentActivity() {
                     )
                 }
 
+                var selectedPatientName by remember {
+                    mutableStateOf("")
+                }
+
                 when (currentScreen) {
+
                     "register" -> {
                         RegisterScreen(
-                            onRegister = { fullName, email ->
-                                currentUserName = fullName
-                                currentUserEmail = email
+                            registrationError = registrationError,
+                            onRegister = { fullName, email, password, role ->
+                                val errorMessage = userStore.register(
+                                    fullName = fullName,
+                                    email = email,
+                                    password = password,
+                                    role = role
+                                )
 
-                                sharedPreferences
-                                    .edit()
-                                    .putString("user_name", fullName)
-                                    .putString("user_email", email)
-                                    .apply()
-
-                                currentScreen = "login"
+                                if (errorMessage == null) {
+                                    registrationError = null
+                                    currentScreen = "login"
+                                } else {
+                                    registrationError = errorMessage
+                                }
                             },
                             onBack = {
+                                registrationError = null
                                 currentScreen = "login"
                             }
                         )
@@ -214,11 +240,42 @@ class MainActivity : ComponentActivity() {
 
                     "login" -> {
                         LoginScreen(
-                            onLogin = { email, _ ->
-                                currentUserEmail = email
-                                currentScreen = "home"
+                            loginError = loginError,
+                            onLogin = { email, password ->
+                                val authenticatedUser = userStore.authenticate(
+                                    email = email,
+                                    password = password
+                                )
+
+                                if (authenticatedUser == null) {
+                                    loginError = "E-posta veya şifre hatalı."
+                                } else {
+                                    loginError = null
+
+                                    currentUserName = authenticatedUser.fullName
+                                    currentUserEmail = authenticatedUser.email
+                                    currentUserRole = authenticatedUser.role
+
+                                    sharedPreferences
+                                        .edit()
+                                        .putString(
+                                            "active_user_email",
+                                            authenticatedUser.email
+                                        )
+                                        .apply()
+
+                                    currentScreen = when (authenticatedUser.role) {
+                                        UserRole.PATIENT -> "home"
+
+                                        UserRole.DOCTOR,
+                                        UserRole.RELATIVE -> "monitoring_home"
+
+                                        UserRole.ADMIN -> "admin_home"
+                                    }
+                                }
                             },
                             onRegister = {
+                                loginError = null
                                 currentScreen = "register"
                             }
                         )
@@ -379,6 +436,78 @@ class MainActivity : ComponentActivity() {
                             hasUnreadNotifications = hasUnreadNotifications,
                             onBack = {
                                 currentScreen = "home"
+                            }
+                        )
+                    }
+
+                    "monitoring_home" -> {
+                        MonitoringHomeScreen(
+                            userName = currentUserName,
+                            userRole = currentUserRole,
+                            onPatientClick = { patientName ->
+                                selectedPatientName = patientName
+                                currentScreen = "patient_detail"
+                            },
+                            onOpenNotifications = {
+                                currentScreen = "role_notifications"
+                            },
+                            onOpenProfile = {
+                                currentScreen = "role_profile"
+                            }
+                        )
+                    }
+
+                    "patient_detail" -> {
+                        PatientDetailScreen(
+                            patientName = selectedPatientName,
+                            stepCount = stepCountState.value,
+                            averageHeartRate = avgHeartRateState.value,
+                            latestHeartRate = latestHeartRateState.value,
+                            sleepDuration = sleepDurationState.value,
+                            exerciseSummary = exerciseSummaryState.value,
+                            onBack = {
+                                currentScreen = "monitoring_home"
+                            }
+                        )
+                    }
+
+                    "admin_home" -> {
+                        AdminHomeScreen(
+                            userName = currentUserName,
+                            onOpenProfile = {
+                                currentScreen = "role_profile"
+                            },
+                            onOpenNotifications = {
+                                currentScreen = "role_notifications"
+                            }
+                        )
+                    }
+
+                    "role_profile" -> {
+                        RoleProfileScreen(
+                            userName = currentUserName,
+                            userEmail = currentUserEmail,
+                            userRole = currentUserRole,
+                            onBack = {
+                                currentScreen = when (currentUserRole) {
+                                    UserRole.DOCTOR,
+                                    UserRole.RELATIVE -> "monitoring_home"
+
+                                    UserRole.ADMIN -> "admin_home"
+
+                                    UserRole.PATIENT -> "home"
+                                }
+                            },
+                            onLogout = {
+                                sharedPreferences
+                                    .edit()
+                                    .remove("active_user_email")
+                                    .apply()
+
+                                currentUserName = ""
+                                currentUserEmail = ""
+                                currentUserRole = UserRole.PATIENT
+                                currentScreen = "login"
                             }
                         )
                     }

@@ -9,12 +9,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.ButtonDefaults
 @Composable
 fun RegisterScreen(
+    registrationError: String? = null,
     onRegister: (
         fullName: String,
-        email: String
+        email: String,
+        password: String,
+        role: UserRole
     ) -> Unit,
     onBack: () -> Unit
 ) {
@@ -24,7 +29,12 @@ fun RegisterScreen(
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
 
+    var selectedRole by remember {
+        mutableStateOf(UserRole.PATIENT)
+    }
+
     var error by remember { mutableStateOf("") }
+
 
     val mainColor = Color(0xFF1D6679)
 
@@ -85,11 +95,74 @@ fun RegisterScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(18.dp))
 
-            if (error.isNotEmpty()) {
+            Text(
+                text = "Hesap türü",
+                modifier = Modifier.fillMaxWidth(),
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    RoleSelectionButton(
+                        modifier = Modifier.weight(1f),
+                        title = "Hasta",
+                        selected = selectedRole == UserRole.PATIENT,
+                        onClick = {
+                            selectedRole = UserRole.PATIENT
+                        }
+                    )
+
+                    RoleSelectionButton(
+                        modifier = Modifier.weight(1f),
+                        title = "Doktor",
+                        selected = selectedRole == UserRole.DOCTOR,
+                        onClick = {
+                            selectedRole = UserRole.DOCTOR
+                        }
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    RoleSelectionButton(
+                        modifier = Modifier.weight(1f),
+                        title = "Hasta Yakını",
+                        selected = selectedRole == UserRole.RELATIVE,
+                        onClick = {
+                            selectedRole = UserRole.RELATIVE
+                        }
+                    )
+
+                    RoleSelectionButton(
+                        modifier = Modifier.weight(1f),
+                        title = "Admin",
+                        selected = selectedRole == UserRole.ADMIN,
+                        onClick = {
+                            selectedRole = UserRole.ADMIN
+                        }
+                    )
+                }
+            }
+
+            val visibleError = error.ifBlank {
+                registrationError.orEmpty()
+            }
+
+            if (visibleError.isNotEmpty()) {
                 Text(
-                    text = error,
+                    text = visibleError,
                     color = Color.Red
                 )
 
@@ -120,7 +193,9 @@ fun RegisterScreen(
                         else -> {
                             onRegister(
                                 fullName.trim(),
-                                email.trim()
+                                email.trim(),
+                                password,
+                                selectedRole
                             )
                         }
                     }
@@ -144,5 +219,36 @@ fun RegisterScreen(
         }
 
     }
+}
 
+@Composable
+private fun RoleSelectionButton(
+    modifier: Modifier = Modifier,
+    title: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    OutlinedButton(
+        onClick = onClick,
+        modifier = modifier,
+        shape = RoundedCornerShape(14.dp),
+        colors = ButtonDefaults.outlinedButtonColors(
+            containerColor = if (selected) {
+                Color(0xFFD8F0F2)
+            } else {
+                Color.White
+            },
+            contentColor = Color(0xFF1D6679)
+        )
+    ) {
+        Text(
+            text = title,
+            fontSize = 12.sp,
+            fontWeight = if (selected) {
+                FontWeight.Bold
+            } else {
+                FontWeight.Normal
+            }
+        )
+    }
 }

@@ -15,7 +15,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 @Composable
 fun ProfileScreen(
     userName: String,
@@ -23,8 +24,9 @@ fun ProfileScreen(
     totalPoints: Int,
     completedTaskCount: Int,
     purchasedRewards: List<String>,
-    onBack: () -> Unit = {}
-) {
+    onBack: () -> Unit = {},
+    onLogout: () -> Unit = {}
+){
     val background = Color(0xFFF1F7F9)
     val darkText = Color(0xFF14263D)
     val secondaryText = Color(0xFF7890A2)
@@ -198,9 +200,28 @@ fun ProfileScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             ProfileOptionCard(
-                title = "Bildirim Ayarları",
+                title = "Ayarlar",
                 description = "Görev ve sağlık hatırlatmalarını düzenle."
             )
+            Spacer(modifier = Modifier.height(28.dp))
+
+            Button(
+                onClick = onLogout,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFFD96849)
+                )
+            ) {
+                Text(
+                    text = "Çıkış Yap",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            }
 
             Spacer(modifier = Modifier.height(24.dp))
         }
