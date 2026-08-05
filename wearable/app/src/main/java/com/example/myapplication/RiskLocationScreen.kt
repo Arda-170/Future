@@ -11,13 +11,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-// Geçici Veri Modeli
+
 data class RiskLocation(val id: String, val name: String, val latitude: Double, val longitude: Double)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RiskLocationScreen(onBack: () -> Unit) {
-    // Örnek kaydedilmiş lokasyonlar
     var savedLocations by remember { 
         mutableStateOf(listOf(
             RiskLocation("1", "Eski Mahalle (Kaçınılması Gereken)", 36.78, 31.43) // Manavgat koordinatlarına yakın bir örnek
@@ -72,7 +71,7 @@ fun RiskLocationScreen(onBack: () -> Unit) {
             text = { Text("Mevcut konumunuz riskli alan olarak kaydedilecek ve izleme başlatılacaktır. Onaylıyor musunuz?") },
             confirmButton = {
                 Button(onClick = { 
-                    // Burada GeofenceManager çağrılıp bölge eklenecek
+                    //GeofenceManager çağrılıp bölge ekleniyo
                     showAddDialog = false 
                 }) { Text("Onaylıyorum") }
             },
