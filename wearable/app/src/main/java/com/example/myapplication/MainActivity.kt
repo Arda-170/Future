@@ -427,6 +427,18 @@ class MainActivity : ComponentActivity() {
                             purchasedRewards = purchasedRewards,
                             onBack = {
                                 currentScreen = "home"
+                            },
+                            onLogout = {
+                                sharedPreferences
+                                    .edit()
+                                    .remove("active_user_email")
+                                    .apply()
+
+                                currentUserName = ""
+                                currentUserEmail = ""
+                                currentUserRole = UserRole.PATIENT
+
+                                currentScreen = "login"
                             }
                         )
                     }
