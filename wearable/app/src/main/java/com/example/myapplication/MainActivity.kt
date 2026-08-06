@@ -103,8 +103,6 @@ class MainActivity : ComponentActivity() {
 
         Log.d("TEST", "onCreate çalıştı")
 
-        checkHealthConnectDurumu()
-
         val sharedPreferences =
             getSharedPreferences("UserData", MODE_PRIVATE)
 
