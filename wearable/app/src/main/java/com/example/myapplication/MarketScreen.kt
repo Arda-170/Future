@@ -191,6 +191,10 @@ fun MarketScreen(
                 userPoints = userPoints
             )
 
+            Spacer(modifier = Modifier.height(14.dp))
+
+            AiComingSoonCard()
+
             if (message != null) {
                 Spacer(modifier = Modifier.height(12.dp))
 
@@ -471,6 +475,78 @@ private fun MarketRewardCard(
                         "Puan Yetersiz"
                     },
                     fontSize = 12.sp
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AiComingSoonCard() {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        color = Color(0xFFE7F3F5)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                modifier = Modifier.size(52.dp),
+                shape = CircleShape,
+                color = Color.White
+            ) {
+                Box(
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "✨",
+                        fontSize = 24.sp
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(14.dp))
+
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Yapay Zekâ Önerileri",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MarketDarkText
+                    )
+
+                    Spacer(modifier = Modifier.width(48.dp))
+
+                    Surface(
+                        shape = RoundedCornerShape(50),
+                        color = MarketTeal
+                    ) {
+                        Text(
+                            text = "YAKINDA",
+                            modifier = Modifier.padding(
+                                horizontal = 8.dp,
+                                vertical = 4.dp
+                            ),
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
+                }
+
+                Text(
+                    text = "Alışkanlıklarına ve puanlarına göre kişiselleştirilmiş ödül önerileri yakında aktif edilecek.",
+                    modifier = Modifier.padding(top = 6.dp),
+                    fontSize = 12.sp,
+                    lineHeight = 17.sp,
+                    color = MarketSecondaryText
                 )
             }
         }
