@@ -27,14 +27,15 @@ private val ReportTeal = Color(0xFF1D6679)
 
 @Composable
 fun ReportScreen(
-    adimSayisi = stepCountState.value,
-        ortalamaNabiz = avgHeartRateState.value,
-        sonNabiz = latestHeartRateState.value,
-        uykuSuresi = sleepDurationState.value ?: tahminiUykuState.value,
-        egzersizOzeti = exerciseSummaryState.value,
-        onNavigate = { destination ->
-        currentScreen = destination
-) {
+    adimSayisi: Long?,
+    ortalamaNabiz: Long?,
+    sonNabiz: Long?,
+    uykuSuresi: String?,
+    egzersizOzeti: String?,
+    heartRatePoints: List<HeartRatePoint>,
+    onBack: () -> Unit,
+    onNavigate: (String) -> Unit
+){
     Scaffold(
         containerColor = ReportBackground,
         bottomBar = {

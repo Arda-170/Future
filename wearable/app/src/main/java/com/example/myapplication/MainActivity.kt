@@ -82,6 +82,10 @@ class MainActivity : ComponentActivity() {
     private var screenTimeState = mutableStateOf<String?>(null)
     private var tahminiUykuState = mutableStateOf<String?>(null)
 
+    private var sleepStartInstant = mutableStateOf<Instant?>(null)
+    private var sleepEndInstant = mutableStateOf<Instant?>(null)
+    private var sleepDurationMinutesState = mutableStateOf<Long?>(null)
+
     private val requestPermissionLauncher = registerForActivityResult(
         PermissionController.createRequestPermissionResultContract()
     ) { grantedPermissions ->
@@ -403,6 +407,9 @@ class MainActivity : ComponentActivity() {
                             uykuSuresi = sleepDurationState.value,
                             egzersizOzeti = exerciseSummaryState.value,
                             heartRatePoints = heartRatePointsState.value,
+                            onBack = {
+                                currentScreen = "home"
+                            },
                             onNavigate = { destination ->
                                 currentScreen = destination
                             }
@@ -623,28 +630,57 @@ class MainActivity : ComponentActivity() {
                 val simdi = Instant.now()
                 val samples = mutableListOf<HealthSample>()
 
-                // Adım sayısı
+                // Adım sayısı — snapshot anı start_time olarak kullanılıyor
                 stepCountState.value?.let { adim ->
                     samples.add(
                         buildHealthSample(
                             metric = "steps",
                             value = adim.toDouble(),
-                            startTime = bugununBaslangici(),
+                            startTime = simdi,
                             endTime = simdi,
                             unit = "count"
                         )
                     )
                 }
 
-                // Ortalama nabız
+                // Ortalama nabız — snapshot anı start_time olarak kullanılıyor
                 avgHeartRateState.value?.let { nabiz ->
                     samples.add(
                         buildHealthSample(
                             metric = "heart_rate",
                             value = nabiz.toDouble(),
-                            startTime = bugununBaslangici(),
+                            startTime = simdi,
                             endTime = simdi,
                             unit = "bpm"
+                        )
+                    )
+                }
+
+                // Uyku — gerçek uyku penceresi start_time olarak kullanılıyor
+                sleepDurationMinutesState.value?.let { dakika ->
+                    val baslangic = sleepStartInstant.value ?: simdi
+                    val bitis = sleepEndInstant.value ?: simdi
+                    samples.add(
+                        buildHealthSample(
+                            metric = "sleep_session",
+                            value = dakika.toDouble(),
+                            startTime = baslangic,
+                            endTime = bitis,
+                            unit = "minutes"
+                        )
+                    )
+                }
+
+                // Ekran süresi — her saat dilimi ayrı kayıt olarak gönderiliyor
+                val saatlikEkranSuresi = readScreenTimeByHour()
+                for ((saatBaslangici, dakika) in saatlikEkranSuresi) {
+                    samples.add(
+                        buildHealthSample(
+                            metric = "screen_time",
+                            value = dakika.toDouble(),
+                            startTime = saatBaslangici,
+                            endTime = saatBaslangici.plus(Duration.ofHours(1)),
+                            unit = "minutes"
                         )
                     )
                 }
@@ -881,9 +917,22 @@ class MainActivity : ComponentActivity() {
         if (response.records.isEmpty()) return "Veri yok"
 
         var toplamSure = Duration.ZERO
+        var enErkenBaslangic: Instant? = null
+        var enGecBitis: Instant? = null
+
         for (record in response.records) {
             toplamSure = toplamSure.plus(Duration.between(record.startTime, record.endTime))
+            if (enErkenBaslangic == null || record.startTime.isBefore(enErkenBaslangic)) {
+                enErkenBaslangic = record.startTime
+            }
+            if (enGecBitis == null || record.endTime.isAfter(enGecBitis)) {
+                enGecBitis = record.endTime
+            }
         }
+
+        sleepStartInstant.value = enErkenBaslangic
+        sleepEndInstant.value = enGecBitis
+        sleepDurationMinutesState.value = toplamSure.toMinutes()
 
         val saat = toplamSure.toHours()
         val dakika = toplamSure.toMinutes() % 60
@@ -957,6 +1006,41 @@ class MainActivity : ComponentActivity() {
         }
 
         return toplamMs / 1000 / 60
+    }
+    private fun readScreenTimeByHour(): Map<Instant, Long> {
+        // Dönen değer: o saatin başlangıç anı -> o saatteki ekran süresi (dakika)
+        val sonuc = mutableMapOf<Instant, Long>()
+        if (!kullanimErisimiIzniVarMi()) return sonuc
+
+        val usageStatsManager = getSystemService(USAGE_STATS_SERVICE) as UsageStatsManager
+        val startTime = bugununBaslangici().toEpochMilli()
+        val endTime = Instant.now().toEpochMilli()
+
+        val events = usageStatsManager.queryEvents(startTime, endTime)
+        var sonAcilmaZamani: Long? = null
+        val zoneId = ZoneId.systemDefault()
+
+        val event = UsageEvents.Event()
+        while (events.hasNextEvent()) {
+            events.getNextEvent(event)
+            when (event.eventType) {
+                UsageEvents.Event.SCREEN_INTERACTIVE -> {
+                    sonAcilmaZamani = event.timeStamp
+                }
+                UsageEvents.Event.SCREEN_NON_INTERACTIVE -> {
+                    if (sonAcilmaZamani != null) {
+                        val acilmaAni = Instant.ofEpochMilli(sonAcilmaZamani)
+                        val saatBaslangici = acilmaAni.atZone(zoneId)
+                            .withMinute(0).withSecond(0).withNano(0)
+                            .toInstant()
+                        val sureDk = (event.timeStamp - sonAcilmaZamani) / 1000 / 60
+                        sonuc[saatBaslangici] = (sonuc[saatBaslangici] ?: 0L) + sureDk
+                        sonAcilmaZamani = null
+                    }
+                }
+            }
+        }
+        return sonuc
     }
 
     // --- GECE SAATLERİNDE EKRANIN EN UZUN KAPALI KALDIĞI SÜRE (tahmini uyku) ---
