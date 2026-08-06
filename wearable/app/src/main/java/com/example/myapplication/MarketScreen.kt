@@ -326,7 +326,7 @@ private fun MarketPointsCard(
 
                 Column {
                     Text(
-                        text = "Puan Bakiyen",
+                        text = "Bakiyen",
                         fontSize = 13.sp,
                         color = Color(0xFFD5EBEF)
                     )
