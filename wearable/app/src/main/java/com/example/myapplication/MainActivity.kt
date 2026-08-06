@@ -549,8 +549,20 @@ class MainActivity : ComponentActivity() {
                             latestHeartRate = latestHeartRateState.value,
                             sleepDuration = sleepDurationState.value,
                             exerciseSummary = exerciseSummaryState.value,
+                            onOpenLocation = {
+                                currentScreen = "risk_location"
+                            },
                             onBack = {
                                 currentScreen = "monitoring_home"
+                            }
+                        )
+                    }
+
+                    "risk_location" -> {
+                        RiskLocationScreen(
+                            patientName = selectedPatientName,
+                            onBack = {
+                                currentScreen = "patient_detail"
                             }
                         )
                     }

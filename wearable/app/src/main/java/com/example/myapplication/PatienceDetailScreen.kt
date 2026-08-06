@@ -15,7 +15,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
+import androidx.compose.foundation.clickable
 private val DetailBackground = Color(0xFFF1F7F9)
 private val DetailDarkText = Color(0xFF14263D)
 private val DetailSecondaryText = Color(0xFF7890A2)
@@ -29,6 +29,7 @@ fun PatientDetailScreen(
     latestHeartRate: Long? = null,
     sleepDuration: String? = null,
     exerciseSummary: String? = null,
+    onOpenLocation: () -> Unit = {},
     onBack: () -> Unit = {}
 ) {
     Surface(
@@ -38,8 +39,14 @@ fun PatientDetailScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .statusBarsPadding()
                 .verticalScroll(rememberScrollState())
-                .padding(20.dp)
+                .padding(
+                    start = 20.dp,
+                    end = 20.dp,
+                    top = 12.dp,
+                    bottom = 24.dp
+                )
         ) {
             OutlinedButton(
                 onClick = onBack
@@ -87,6 +94,64 @@ fun PatientDetailScreen(
                     unit = "adım",
                     backgroundColor = Color(0xFFD7F0F6)
                 )
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        onOpenLocation()
+                    },
+                shape = RoundedCornerShape(18.dp),
+                color = Color.White
+            ) {
+                Row(
+                    modifier = Modifier.padding(18.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Surface(
+                        modifier = Modifier.size(50.dp),
+                        shape = CircleShape,
+                        color = Color(0xFFD8F0F2)
+                    ) {
+                        Box(
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "📍",
+                                fontSize = 24.sp
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(14.dp))
+
+                    Column(
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            text = "Riskli Lokasyonlar",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF14263D)
+                        )
+
+                        Text(
+                            text = "Tanımlanan güvenli ve riskli alanları görüntüle.",
+                            modifier = Modifier.padding(top = 5.dp),
+                            fontSize = 12.sp,
+                            color = Color(0xFF7890A2)
+                        )
+                    }
+
+                    Text(
+                        text = "›",
+                        fontSize = 28.sp,
+                        color = Color(0xFF7890A2)
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(12.dp))
