@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -15,18 +16,22 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.material3.Scaffold
 
 private data class PatientItem(
     val name: String,
     val status: String,
-    val lastUpdate: String
+    val lastUpdate: String,
+    val isLocalPatient: Boolean = false
 )
 
 @Composable
 fun MonitoringHomeScreen(
     userName: String,
     userRole: UserRole,
+    localPatientName: String,
+    localStepCount: Long?,
+    localHeartRate: Long?,
+    localSleepDuration: String?,
     onPatientClick: (String) -> Unit = {},
     onOpenNotifications: () -> Unit = {},
     onOpenProfile: () -> Unit = {}
@@ -41,11 +46,41 @@ fun MonitoringHomeScreen(
         ?.uppercase()
         ?: "K"
 
+    /*
+     * Local hastanın durumu gerçek nabız verisine göre belirlenir.
+     * Bu eşikler yalnızca prototip gösterim amacı taşır.
+     */
+    val localPatientStatus = when {
+        localHeartRate == null -> "Stabil"
+        localHeartRate > 110L -> "Riskli"
+        localHeartRate > 100L -> "Dikkat"
+        else -> "Stabil"
+    }
+
+    val hasLocalHealthData =
+        localStepCount != null ||
+                localHeartRate != null ||
+                !localSleepDuration.isNullOrBlank() &&
+                localSleepDuration != "Veri yok"
+
+    val localPatientUpdate = if (hasLocalHealthData) {
+        "Health Connect verisi · Şimdi"
+    } else {
+        "Sağlık verisi bulunamadı"
+    }
+
+    /*
+     * Birinci hasta gerçek local veriyi kullanır.
+     * Diğer iki hasta çoklu hasta senaryosu için demo veridir.
+     */
     val patients = listOf(
         PatientItem(
-            name = "Mehmet Çelik",
-            status = "Stabil",
-            lastUpdate = "2 dk önce"
+            name = localPatientName
+                .trim()
+                .ifBlank { "Mehmet Çelik" },
+            status = localPatientStatus,
+            lastUpdate = localPatientUpdate,
+            isLocalPatient = true
         ),
         PatientItem(
             name = "Ahmet Yılmaz",
@@ -55,7 +90,7 @@ fun MonitoringHomeScreen(
         PatientItem(
             name = "Ayşe Demir",
             status = "Riskli",
-            lastUpdate = "Şimdi"
+            lastUpdate = "1 saat önce"
         )
     )
 
@@ -120,7 +155,12 @@ fun MonitoringHomeScreen(
                 }
             }
 
-            items(patients) { patient ->
+            items(
+                items = patients,
+                key = { patient ->
+                    patient.name
+                }
+            ) { patient ->
                 PatientCard(
                     patient = patient,
                     onClick = {
@@ -139,72 +179,70 @@ private fun MonitoringHeader(
     onOpenNotifications: () -> Unit,
     onOpenProfile: () -> Unit
 ) {
-    Column {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.Top,
-            horizontalArrangement = Arrangement.SpaceBetween
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Column(
+            modifier = Modifier.weight(1f)
         ) {
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(
-                    text = "İyi günler!",
-                    fontSize = 20.sp,
-                    color = Color(0xFF7890A2)
-                )
+            Text(
+                text = "İyi günler!",
+                fontSize = 20.sp,
+                color = Color(0xFF7890A2)
+            )
 
-                Text(
-                    text = displayName,
-                    fontSize = 30.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF14263D)
-                )
+            Text(
+                text = displayName,
+                fontSize = 30.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF14263D)
+            )
+        }
+
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Surface(
+                modifier = Modifier
+                    .size(46.dp)
+                    .clickable {
+                        onOpenNotifications()
+                    },
+                shape = CircleShape,
+                color = Color.White,
+                shadowElevation = 2.dp
+            ) {
+                Box(
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "🔔",
+                        fontSize = 21.sp
+                    )
+                }
             }
 
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            Surface(
+                modifier = Modifier
+                    .size(46.dp)
+                    .clickable {
+                        onOpenProfile()
+                    },
+                shape = CircleShape,
+                color = Color(0xFF1D6679),
+                shadowElevation = 2.dp
             ) {
-                Surface(
-                    modifier = Modifier
-                        .size(46.dp)
-                        .clickable {
-                            onOpenNotifications()
-                        },
-                    shape = CircleShape,
-                    color = Color.White,
-                    shadowElevation = 2.dp
+                Box(
+                    contentAlignment = Alignment.Center
                 ) {
-                    Box(
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "🔔",
-                            fontSize = 21.sp
-                        )
-                    }
-                }
-
-                Surface(
-                    modifier = Modifier
-                        .size(46.dp)
-                        .clickable {
-                            onOpenProfile()
-                        },
-                    shape = CircleShape,
-                    color = Color(0xFF1D6679),
-                    shadowElevation = 2.dp
-                ) {
-                    Box(
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = userInitial,
-                            fontSize = 19.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                    }
+                    Text(
+                        text = userInitial,
+                        fontSize = 19.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
                 }
             }
         }
@@ -222,6 +260,12 @@ private fun PatientCard(
         else -> Color(0xFFD96849)
     }
 
+    val avatarBackground = if (patient.isLocalPatient) {
+        Color(0xFFDDF5E7)
+    } else {
+        Color(0xFFD8F0F2)
+    }
+
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -229,7 +273,8 @@ private fun PatientCard(
                 onClick()
             },
         shape = RoundedCornerShape(18.dp),
-        color = Color.White
+        color = Color.White,
+        shadowElevation = 1.dp
     ) {
         Row(
             modifier = Modifier.padding(18.dp),
@@ -238,7 +283,7 @@ private fun PatientCard(
             Surface(
                 modifier = Modifier.size(54.dp),
                 shape = CircleShape,
-                color = Color(0xFFD8F0F2)
+                color = avatarBackground
             ) {
                 Box(
                     contentAlignment = Alignment.Center
@@ -256,25 +301,57 @@ private fun PatientCard(
                 }
             }
 
-            Spacer(modifier = Modifier.width(14.dp))
+            Spacer(
+                modifier = Modifier.width(14.dp)
+            )
 
             Column(
                 modifier = Modifier.weight(1f)
             ) {
-                Text(
-                    text = patient.name,
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF14263D)
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = patient.name,
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF14263D)
+                    )
+
+                    if (patient.isLocalPatient) {
+                        Spacer(
+                            modifier = Modifier.width(7.dp)
+                        )
+
+                        Surface(
+                            shape = RoundedCornerShape(50),
+                            color = Color(0xFFDDF5E7)
+                        ) {
+                            Text(
+                                text = "CANLI",
+                                modifier = Modifier.padding(
+                                    horizontal = 8.dp,
+                                    vertical = 4.dp
+                                ),
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF2F8A58)
+                            )
+                        }
+                    }
+                }
 
                 Text(
                     text = patient.lastUpdate,
-                    modifier = Modifier.padding(top = 4.dp),
+                    modifier = Modifier.padding(top = 5.dp),
                     color = Color(0xFF7890A2),
                     fontSize = 12.sp
                 )
             }
+
+            Spacer(
+                modifier = Modifier.width(10.dp)
+            )
 
             Text(
                 text = patient.status,

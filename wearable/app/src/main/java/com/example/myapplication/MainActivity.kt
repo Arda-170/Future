@@ -400,14 +400,17 @@ class MainActivity : ComponentActivity() {
                             adimSayisi = stepCountState.value,
                             ortalamaNabiz = avgHeartRateState.value,
                             sonNabiz = latestHeartRateState.value,
-                            uykuSuresi = sleepDurationState.value,
-                            egzersizOzeti = exerciseSummaryState.value,
-                            heartRatePoints = heartRatePointsState.value,
+                            uykuSuresi =
+                                sleepDurationState.value
+                                    ?: tahminiUykuState.value,
+                            egzersizOzeti =
+                                exerciseSummaryState.value,
+                            heartRatePoints =
+                                heartRatePointsState.value,
                             onNavigate = { destination ->
                                 currentScreen = destination
                             }
                         )
-
                     }
 
                     "tasks" -> {
@@ -517,6 +520,13 @@ class MainActivity : ComponentActivity() {
                         MonitoringHomeScreen(
                             userName = currentUserName,
                             userRole = currentUserRole,
+                            localPatientName = "Mehmet Çelik",
+                            localStepCount = stepCountState.value,
+                            localHeartRate =
+                                latestHeartRateState.value
+                                    ?: avgHeartRateState.value,
+                            localSleepDuration =
+                                sleepDurationState.value,
                             onPatientClick = { patientName ->
                                 selectedPatientName = patientName
                                 currentScreen = "patient_detail"
